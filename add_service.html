@@ -1,0 +1,86 @@
+{% extends "layout.html" %} {% block title %}Admin - Adicionar Serviço{%
+endblock %} {% block content %}
+
+<style>
+  .page-title {
+    color: #0d5590;
+    font-weight: 800;
+    text-align: center;
+    margin-top: 25px;
+    margin-bottom: 25px;
+    font-size: 2rem;
+  }
+
+  .form-card {
+    background: #ffffff;
+    padding: 35px 30px;
+    border-radius: 18px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.07);
+    max-width: 600px;
+    margin: 0 auto;
+    transition: 0.2s ease;
+  }
+
+  .form-card:hover {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .form-label {
+    font-weight: 600;
+    color: #0d5590;
+  }
+
+  .form-control {
+    border-radius: 14px !important;
+    padding: 14px;
+    border: 1px solid #cfd6dd;
+    transition: 0.25s ease;
+  }
+
+  .form-control:focus {
+    border-color: #0d5590 !important;
+    box-shadow: 0 0 0 0.15rem rgba(13, 85, 144, 0.25) !important;
+  }
+
+  .btn-submit {
+    width: 60%;
+    padding: 12px;
+    background-color: #0d5590;
+    border-radius: 14px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border: none;
+    transition: 0.25s ease;
+  }
+
+  .btn-submit:hover {
+    background-color: #083a63;
+    transform: translateY(-2px);
+  }
+</style>
+
+<h1 class="page-title">Adicionar Serviço</h1>
+
+<div class="form-card">
+  <form method="POST" action="/add_service">
+    <div class="mb-4">
+      <label for="service" class="form-label">Nome do Serviço:</label>
+      <input
+        class="form-control"
+        type="text"
+        id="service"
+        name="service"
+        required
+      />
+    </div>
+
+    <div class="text-center">
+      <button class="btn btn-submit btn-primary" type="submit">
+        Adicionar
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
