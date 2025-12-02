@@ -89,25 +89,18 @@ content %}
             />
           </div>
 
-          <div class="col-md-4">
+          <!-- ESTADO (UF) -->
+          <div class="col-md-3">
             <label for="estado" class="form-label fw-semibold">Estado</label>
             <select id="estado" class="form-select" name="estado" required>
-              <option>Selecionar</option>
-              <option value="AL">Alagoas</option>
-              <option value="BA">Bahia</option>
-              <option value="GO">Goiás</option>
-              <option value="SP">São Paulo</option>
-              <option value="SC">Santa Catarina</option>
-              <option value="RS">Rio Grande do Sul</option>
-              <option value="PR">Paraná</option>
-              <option value="MG">Minas Gerais</option>
-              <option value="DF">Distrito Federal</option>
+              <option value="">Carregando estados...</option>
             </select>
           </div>
 
+          <!-- CIDADE -->
           <div class="col-md-4">
             <label for="cidade" class="form-label fw-semibold">Cidade</label>
-            <select id="cidade" class="form-select" name="cidade">
+            <select id="cidade" class="form-select" name="cidade" required>
               <option value="">Selecione um ESTADO primeiro</option>
             </select>
           </div>
@@ -1165,6 +1158,105 @@ content %}
 </style>
 
 <script>
+  // ================================
+  // 1. CARREGAR ESTADOS DO FIREBASE
+  // ================================
+  document.addEventListener("DOMContentLoaded", function () {
+    carregarEstados();
+  });
+
+  async function carregarEstados() {
+    try {
+      const resp = await fetch("/api/ufs");
+      const data = await resp.json();
+
+      const estadoSelect = document.getElementById("estado");
+
+      // Limpa e coloca "Selecionar"
+      estadoSelect.innerHTML = `<option value="">Selecionar</option>`;
+
+      // Adiciona os UFs vindos do Firebase
+      data.ufs.forEach((uf) => {
+        const opt = document.createElement("option");
+        opt.value = uf;
+        opt.textContent = uf;
+        estadoSelect.appendChild(opt);
+      });
+
+      // Quando mudar o estado → carregar cidades
+      estadoSelect.addEventListener("change", carregarCidades);
+    } catch (e) {
+      console.error("Erro ao carregar estados:", e);
+    }
+  }
+
+  // =====================================
+  // 2. CARREGAR CIDADES BASEADO NA UF
+  // =====================================
+  async function carregarCidades() {
+    const uf = document.getElementById("estado").value;
+    const cidadeSelect = document.getElementById("cidade");
+
+    if (!uf) {
+      cidadeSelect.innerHTML = `<option value="">Selecione um ESTADO primeiro</option>`;
+      return;
+    }
+
+    cidadeSelect.innerHTML = `<option value="">Carregando...</option>`;
+
+    try {
+      const resp = await fetch(`/api/cidades/${uf}`);
+      const data = await resp.json();
+
+      cidadeSelect.innerHTML = `<option value="">Selecionar</option>`;
+
+      data.cidades.forEach((cidade) => {
+        const opt = document.createElement("option");
+        opt.value = cidade;
+        opt.textContent = cidade;
+        cidadeSelect.appendChild(opt);
+      });
+    } catch (e) {
+      console.error("Erro ao carregar cidades:", e);
+    }
+  }
+
+  // ===================================================
+  // 3. ATUALIZAR TELEFONE DA CIDADE SELECIONADA
+  // ===================================================
+  window.telefoneCidadeSelecionada = null;
+
+  async function atualizarTelefoneCidade() {
+    const uf = document.getElementById("estado").value;
+    const cidade = document.getElementById("cidade").value;
+
+    if (!uf || !cidade) {
+      window.telefoneCidadeSelecionada = null;
+      return;
+    }
+
+    try {
+      const resp = await fetch(
+        `/api/telefone_cidade?uf=${encodeURIComponent(
+          uf
+        )}&cidade=${encodeURIComponent(cidade)}`
+      );
+      const data = await resp.json();
+
+      window.telefoneCidadeSelecionada = data.telefone || null;
+    } catch (e) {
+      console.error("Erro ao buscar telefone da cidade:", e);
+      window.telefoneCidadeSelecionada = null;
+    }
+  }
+
+  // Atualiza telefone quando mudar cidade
+  document
+    .getElementById("cidade")
+    .addEventListener("change", atualizarTelefoneCidade);
+</script>
+
+<script>
   function capitalizarNome(input) {
     let palavras = input.value.toLowerCase().split(" ");
 
@@ -1369,6 +1461,7 @@ content %}
 </script>
 
 <script>
+  /*
   const selectEstado = document.getElementById("estado");
   const selectCidade = document.getElementById("cidade");
 
@@ -1535,7 +1628,7 @@ content %}
         selectCidade.appendChild(newOption);
       });
     }
-  });
+  });*/
 </script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
