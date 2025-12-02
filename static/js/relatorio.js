@@ -53,6 +53,7 @@ function gerarAssinatura(nome) {
   return canvas.toDataURL("image/png");
 }
 
+window.telefoneCidadeSelecionada = null;
 
 async function gerarPDF() {
 
@@ -198,132 +199,7 @@ async function gerarPDF() {
         pdf.setFont("helvetica", "normal");
 
 
-        const telefonesMap = {
-            "Maceió": "(82) 92001-4853",
-            "Satuba": "(82) 92001-4853",
-            "Santa Luzia do Norte": "(82) 92001-4853",
-            "Coqueiro Seco": "(82) 92001-4853",
-            "Cadoz": "(82) 92001-4853",
-            "Rio Largo": "(82) 92001-4853",
-            "Marechal Deodoro": "(82) 92001-4853",
-            "Santa Luzia": "(82) 92001-4853",
-            "Pilar": "(82) 92001-4853",
-            "Barra de São Miguel": "(82) 92001-4853",
-            "Atalaia": "(82) 92001-4853",
-            "Murici": "(82) 92001-4853",
-            "Messias": "(82) 92001-4853",
-            "Barra de Santo Antônio": "(82) 92001-4853",
-            "Paripueira": "(82) 92001-4853",
-            "Arapiraca": "(82) 92001-4853",
-
-
-            "Salvador": "(71) 93300-1134",
-            "Camaçari": "(71) 93300-1134",
-            "Feira de Santana": "(75) 93300-2063",
-            "Lauro de Freitas": "(71) 93300-1134",
-            "Simões Filho": "(71) 93300-1134",
-            "Gamboa": "(71) 93300-1134",
-            "Vera Cruz": "(71) 93300-1134",
-            "Itaparica": "(71) 93300-1134",
-            "Mata de São João": "(71) 93300-1134",
-            "Alagoinhas": "(71) 93300-1134",
-            "Madre De Deus": "(71) 93300-1134",
-            "Salinas das Margaridas": "(71) 93300-1134",
-
-
-            "Goiânia": "(62) 93300-6961",
-            "Aparecida de Goiânia": "(62) 93300-6961",
-            "Senador Canedo": "(62) 93300-6961",
-            "Trindade": "(62) 93300-6961",
-            "Anápolis": "(62) 93300-6961",
-            "Goianira": "(62) 93300-6961",
-            "Rio Verde": "(62) 93300-6961",
-            "Bela Vista": "(62) 93300-6961",
-            "Hidrolândia": "(62) 93300-6961",
-            "Nerópolis": "(62) 93300-6961",
-            "Cesarina": "(62) 93300-6961",
-            "Guapó": "(62) 93300-6961",
-            "Aragoiânia": "(62) 93300-6961",
-            "Maripotaba": "(62) 93300-6961",
-            "Palmeiras": "(62) 93300-6961",
-
-            "São Paulo": "(11) 93300-3231",
-            "Santos": "(11) 93300-3231",
-            "Osasco": "(11) 93300-3231",
-            "Barueri": "(11) 93300-3231",
-            "Campinas": "(19) 92001-6371",
-            "Itupeva": "(19) 92001-6371",
-            "Franco Da Rocha": "(19) 92001-6371",
-            "Jundiaí": "(19) 92001-6371",
-            "Campo Limpo Paulista": "(19) 92001-6371",
-            "Louveira": "(19) 98563-4600",
-            "Várzea Paulista": "(19) 92001-6371",
-            "Vinhedo": "(19) 92001-6371",
-            "Valinhos": "(19) 92001-6371",
-            "Hortolândia": "(19) 92001-6371",
-            "Paulínia": "(19) 92001-6371",
-            "Itatiba": "(19) 92001-6371",
-            "Indaiatuba": "(19) 92001-6371",
-            "Jaguariúna": "(19) 92001-6371",
-            "Sumaré": "(11) 93300-3231",
-            "Diadema": "(11) 93300-3231",
-            "Santo André": "(11) 93300-3231",
-            "São Bernardo do Campo": "(11) 93300-3231",
-            "São Caetano do Sul": "(19) 92001-6371",
-            "Mauá": "(19) 92001-6371",
-            "Jaguariúna": "(19) 92001-6371",
-            "Nova Odessa": "(19) 92001-6371",
-            "Americana": "(19) 92001-6371",
-            "Atibaia": "(19) 92001-6371",
-            "Guarulhos": "(11) 93300-3231",
-            "Poa": "(11) 93300-3231",
-            "Mogi das Cruzes": "(11) 93300-3231",
-            "Itaquacetuba": "(11) 93300-3231",
-            "Cajamar": "(19) 92001-6371",
-            "Amparo": "(19) 92001-6371",
-            "Capivari": "(19) 92001-6371",
-            "Limeira": "(19) 92001-6371",
-            "Sorocaba": "(11) 92015-4693",
-
-            "Florianópolis": "(48) 93300-4291",
-            "São José": "(48) 93300-4291",
-            "Palhoça": "(48) 93300-4291",
-            "Biguaçu": "(48) 93300-4291",
-            "Joinville": "(47) 92003-8280",
-
-            "Porto Alegre": "(51) 92001-5474",
-            "Canoas": "(51) 92001-5474",
-            "Glorinha": "(51) 92001-5474",
-            "Guaíba": "(51) 92001-5474",
-            "Gravataí": "(51) 92001-5474",
-            "Novo Hamburgo": "(51) 92001-5474",
-            "Viamão": "(51) 92001-5474",
-            "Esteio": "(51) 92001-5474",
-            "Alvorada": "(51) 92001-5474",
-            "São Leopoldo": "(51) 92001-5474",
-            "Barra do Ribeiro": "(51) 92001-5474",
-            "Eldorado do Sul": "(51) 92001-5474",
-            "Cachoeirinha": "(51) 92001-5474",
-            
-            "Curitiba": "(41) 92001-6421",
-            "São José dos Pinhais": "(41) 92001-6421",
-            "Pinhais": "(41) 92001-6421",
-            "Araucária": "(41) 92001-6421",
-            "Colombo": "(41) 92001-6421",
-            "Campo Largo": "(41) 92001-6421",
-            "Almirante Tamandaré": "(41) 92001-6421",
-
-            "Belo Horizonte": "(31) 93300-6395",
-            "Contagem": "(31) 93300-6395",
-            "Betim": "(31) 93300-6395",
-            "Sabará": "(31) 93300-6395",
-            "Nova Lima": "(31) 93300-6395",
-            "Santa Luzia": "(31) 93300-6395",
-            "Ibirité": "(31) 93300-6395",
-            "Itabirito": "(31) 93300-6395",
-        };
-
-        const telefone = telefonesMap[cidade] || "Telefone não disponível";
+        const telefone = window.telefoneCidadeSelecionada || "Telefone não disponível";
         
           // =============================
   // INFORMAÇÕES DA EMPRESA
