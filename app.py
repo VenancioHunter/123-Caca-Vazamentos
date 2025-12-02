@@ -2632,7 +2632,29 @@ def relatorios_lista_pdf():
 
     return render_template("relatorios_lista_pdf.html", relatorios=lista)
 
+@app.route('/api/ufs')
+def api_ufs():
+    data = db.child("uf").get().val() or {}
+    return jsonify({"ufs": list(data.keys())})
 
+@app.route('/api/cidades/<uf>')
+def api_cidades(uf):
+    data = db.child("uf").child(uf).get().val() or {}
+    cidades = list(data.keys())
+    return jsonify({"cidades": cidades})
+
+@app.route('/api/telefone_cidade')
+def api_telefone_cidade():
+    uf = request.args.get("uf")
+    cidade = request.args.get("cidade")
+
+    if not uf or not cidade:
+        return jsonify({"telefone": None})
+
+    ref = db.child("uf").child(uf).child(cidade)
+    telefone = ref.get().val()
+
+    return jsonify({"telefone": telefone})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5037)
