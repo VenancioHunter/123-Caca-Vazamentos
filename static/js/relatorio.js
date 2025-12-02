@@ -780,7 +780,7 @@ async function gerarPDF() {
     // Primeiro gera o blob
     // MOSTRA POP-UP
 document.getElementById("loadingPopup").style.display = "flex";
-
+/*
 // Primeiro gera o blob antes de salvar
 const pdfBlob = pdf.output("blob");
 
@@ -824,9 +824,13 @@ fetch("/upload_pdf", {
     document.getElementById("loadingPopup").style.display = "none";
     btn.disabled = false;
     btn.innerText = "Baixar como PDF";
-});
-
+});*/
+pdf.save(`Relatorio_Tecnico_${nome}.pdf`);
+document.getElementById("loadingPopup").style.display = "none";
+btn.disabled = false;
+btn.innerText = "Baixar como PDF";
 }
+
 
 
 async function logo(pdf) {
