@@ -159,7 +159,7 @@ def attendance():
 @app.route('/add_city', methods=['GET', 'POST'])
 @check_roles(['admin'])
 def add_city():
-    '''if request.method == 'POST':
+    if request.method == 'POST':
         uf_name = request.form['uf']
         city_name = request.form['city']
         phone_number = request.form['phone']
@@ -173,8 +173,7 @@ def add_city():
             return redirect(url_for('add_city'))
         else:
             return "Cidade já existe"
-        db.child("uf").child(uf_name).child(city_name).set(phone_number)
-        return redirect(url_for('add_city'))'''
+        
 
     return render_template('add_city.html')
 
