@@ -303,6 +303,7 @@ async function gerarPDF() {
             "São Leopoldo": "(51) 92001-5474",
             "Barra do Ribeiro": "(51) 92001-5474",
             "Eldorado do Sul": "(51) 92001-5474",
+            "Cachoeirinha": "(51) 92001-5474",
             
             "Curitiba": "(41) 92001-6421",
             "São José dos Pinhais": "(41) 92001-6421",
