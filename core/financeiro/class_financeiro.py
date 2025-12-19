@@ -8,39 +8,43 @@ class Financeiro:
 
     
 
-    def post_transaction_credito_tecnico(user, date, amount, description, destinatario, method_payment, origem, id_origem):
+    def post_transaction_credito_tecnico(date, amount, description, type, category, especie, destinatario, user, origem, id_origem):
+
+    
 
         sao_paulo_tz = pytz.timezone('America/Sao_Paulo')
         now_in_sao_paulo = datetime.datetime.now(sao_paulo_tz)
         timestamp = now_in_sao_paulo.timestamp()
+        
+        year = str(now_in_sao_paulo.year)
+        month = f"{now_in_sao_paulo.month:02d}"
+        day = f"{now_in_sao_paulo.day:02d}"
+
+        contador = db.child("financeiro").child("contador_transactions").get().val()
+        if contador is None:
+            contador = 0
+
+        # Incrementa
+        novo_numero_transaction = contador + 1
+        db.child("financeiro").child("contador_transactions").set(novo_numero_transaction)
 
         transation = {
-                    'user': user,
+                    'numero_transaction': novo_numero_transaction,
                     'origem': origem,
                     'id_origem': id_origem,
+                    'user': user,
                     'timestamp' : timestamp,
-                    'type': 'c',
-                    'description': f"",
-                    'amount': amount,
-                    'category': 'Serviço',
-                    'especie': f'Remessa {method_payment}',
-                    'destinatario': 'Central Vazamentos' 
+                    'type': type,
+                    'category': category,
+                    'especie': especie,
+                    'destinatario': destinatario,
+                    'description': description,
+                    'amount': amount
                 }
-
-        try:
-            date = datetime.datetime.strptime(date, '%Y-%m-%d')
-        except ValueError:
-            return "Formato de data inválido."
-        
-        year = str(date.year)
-        month = f"{date.month:02d}"
-        day = f"{date.day:02d}"
-
-       
 
         db.child("financeiro").child('transactions').child(year).child(month).child(day).child('transactions').push(transation)
 
-        post_transaction_lancamentos(month=month, year=year, type=transation['type'], amount=amount)
+        post_transaction_lancamentos(year=year, month=month, type=transation['type'], amount=amount)
         post_caixa(amount=amount, type=transation['type'])
 
 
