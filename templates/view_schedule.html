@@ -1,102 +1,131 @@
 <!-- templates/dashboard.html -->
 {% extends "layout.html" %} {% block title %}Dashboard{% endblock %} {% block
 content %}
+<link
+  href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+  rel="stylesheet"
+/>
+
 <script src="../static/js/formatarValor.js"></script>
 
-<div class="my-4" align="center">
-  <h1>Agenda</h1>
-  <div>
-    <h5>{{ date }}</h5>
+<div class="my-4">
+  <div
+    class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2"
+  >
+    <div class="text-center text-md-start">
+      <h2 class="fw-bold mb-0">Agenda</h2>
+      <span class="text-muted small"> {{ date }} </span>
+    </div>
+
+    <div class="badge bg-light text-dark border px-3 py-2">
+      <i class="bi bi-calendar-event me-1"></i>
+      Agenda do dia
+    </div>
   </div>
 </div>
+
 {% if ordens_servico %} {% for os_id, os in ordens_servico.items() %}
-<div class="card mb-3">
+<div class="card mb-4 shadow-sm border-0">
   <div class="card-body">
-    <div>
-      <h5 class="badge bg-danger fs-6">Nº {{ os.get('numero_os', 'N/A') }}</h5>
-    </div>
-    <h5 class="card-title">{{ os.city }}</h5>
-    <div class="my-3" align="end" style="font-weight: bold">
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-start mb-3">
       <div>
-        <span
-          >Início {{ os.start_datetime | datetimeformathour('%H:%M') }}
-          horas</span
-        >
+        <span class="badge bg-danger mb-2">
+          OS Nº {{ os.get('numero_os', 'N/A') }}
+        </span>
+        <h5 class="card-title mb-0">{{ os.city }}</h5>
       </div>
-      <div>
-        <span
-          >Término {{ os.end_datetime | datetimeformathour('%H:%M') }}
-          horas</span
-        >
+
+      <div class="text-end text-muted small">
+        <div>
+          <i class="bi bi-clock"></i>
+          {{ os.start_datetime | datetimeformathour('%H:%M') }} → {{
+          os.end_datetime | datetimeformathour('%H:%M') }}
+        </div>
       </div>
     </div>
-    <ul class="list-group list-group-flush">
-      <li class="list-group-item">Nome: {{ os.name }}</li>
-      <li class="list-group-item">
-        Telefone:
+
+    <!-- Informações principais -->
+    <ul class="list-group list-group-flush mb-3">
+      <li class="list-group-item px-0">
+        <strong>Cliente:</strong> {{ os.name }}
+      </li>
+
+      <li class="list-group-item px-0">
+        <strong>Telefone:</strong>
         <span
-          class="telefone-copiavel"
+          class="telefone-copiavel text-primary text-decoration-underline"
           data-numero="{{ os.phone }}"
-          style="cursor: pointer; color: blue; text-decoration: underline"
+          style="cursor: pointer"
         >
           {{ os.phone }}
         </span>
-        <span
-          class="copiado-msg"
-          style="color: green; margin-left: 10px; display: none"
-        >
-          Copiado!
-        </span>
+        <span class="copiado-msg text-success ms-2 d-none">Copiado!</span>
       </li>
-      <li class="list-group-item">Serviço: {{ os.service }}</li>
-    </ul>
-    <div class="p-4 my-4" style="background-color: rgb(219, 219, 219)">
-      <label>Endereço</label>
-      <ul class="list-group list-group-flush">
-        <li class="list-group-item">Bairro/Setor {{ os.address.bairro }}</li>
-        <li class="list-group-item">Rua {{ os.address.rua }}</li>
-        <li class="list-group-item">Nº {{ os.address.numero }}</li>
-        <li class="list-group-item">
-          Complemento {{ os.address.complemento }}
-        </li>
-        <li class="list-group-item">
-          Localização
-          <a href="{{ os.address.localizacao }}"
-            >{{ os.address.localizacao }}</a
-          >
-        </li>
-      </ul>
-    </div>
-    <div align="end">
-      <h5>R$ {{ os.newprice }}</h5>
-    </div>
-  </div>
 
-  <div class="card-footer" align="center">
-    <!-- <button
-      class="btn btn-primary mt-3"
-      onclick="gerarRelatorioTecnico(
+      <li class="list-group-item px-0">
+        <strong>Serviço:</strong> {{ os.service }}
+      </li>
+    </ul>
+
+    <!-- Endereço -->
+    <div class="rounded p-3 mb-3 bg-light">
+      <div class="fw-bold mb-2"><i class="bi bi-geo-alt"></i> Endereço</div>
+      <div class="small">
+        <div><strong>Bairro:</strong> {{ os.address.bairro }}</div>
+        <div>
+          <strong>Rua:</strong> {{ os.address.rua }}, Nº {{ os.address.numero }}
+        </div>
+        {% if os.address.complemento %}
+        <div><strong>Compl.:</strong> {{ os.address.complemento }}</div>
+        {% endif %}
+        <div>
+          <a href="{{ os.address.localizacao }}" target="_blank">
+            Ver localização
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Valor + Ação -->
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <h4 class="mb-0 text-success fw-bold">R$ {{ os.newprice }}</h4>
+
+      <button
+        class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2"
+        onclick="gerarRelatorioTecnico(
           '{{ os.name }}',
           '{{ os.address.rua }}',
           '{{ os.address.bairro }}',
           '{{ os.address.numero }}',
           '{{ os.address.complemento }}'
         )"
-    >
-      Gerar Relatório Técnico
-    </button>-->
+      >
+        <i class="bi bi-file-earmark-text"></i>
+        Relatório Técnico
+      </button>
+    </div>
+  </div>
+
+  <!-- Rodapé -->
+  <div class="card-footer bg-white border-0 text-center">
     {% if os.status_paymment == "recebido" or os.status_paymment == "pendente"
     %}
-    <div>
-      <span>Recebido</span>
-    </div>
+    <span class="badge bg-success fs-6">Recebido</span>
     {% else %}
     <button
-      class="btn btn-success"
-      style="width: 80%"
+      class="btn btn-success w-100"
       data-bs-toggle="modal"
       data-bs-target="#paymentModal"
-      onclick="setOsId('{{ os_id }}', '{{ os.city }}', '{{ date }}', '{{ os.newprice }}', '{{ os.service }}', '{{ os.tecnico_id }}', '{{ os.numero_os }}')"
+      onclick="setOsId(
+          '{{ os_id }}',
+          '{{ os.city }}',
+          '{{ date }}',
+          '{{ os.newprice }}',
+          '{{ os.service }}',
+          '{{ os.tecnico_id }}',
+          '{{ os.numero_os }}'
+        )"
     >
       Finalizar Serviço
     </button>

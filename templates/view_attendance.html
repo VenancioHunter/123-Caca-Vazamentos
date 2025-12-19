@@ -297,7 +297,7 @@ content %}
               class="form-control"
               id="osName"
               name="name"
-              readonly
+              oninput="capitalizarNome(this)"
             />
           </div>
           <!-- CPF ou CNPJ -->
@@ -695,5 +695,17 @@ content %}
       });
   }
 </script>
+<script>
+  function capitalizarNome(input) {
+    let palavras = input.value.toLowerCase().split(" ");
 
+    for (let i = 0; i < palavras.length; i++) {
+      if (palavras[i].length > 0) {
+        palavras[i] = palavras[i][0].toUpperCase() + palavras[i].slice(1);
+      }
+    }
+
+    input.value = palavras.join(" ");
+  }
+</script>
 {% endblock %}
