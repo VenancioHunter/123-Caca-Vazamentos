@@ -45,6 +45,8 @@ function gerarAssinatura(nome) {
   return canvas.toDataURL("image/png");
 }
 
+window.telefoneCidadeSelecionada = null;
+
 async function gerarPDF() {
   if (!validarCamposObrigatorios()) return;
 
@@ -78,7 +80,7 @@ async function gerarPDF() {
   // =============================
   // TELEFONES POR CIDADE
   // =============================
-  const telefonesMap = {
+  /*const telefonesMap = {
             "Maceió": "(82) 92001-4853",
             "Satuba": "(82) 92001-4853",
             "Santa Luzia do Norte": "(82) 92001-4853",
@@ -163,6 +165,7 @@ async function gerarPDF() {
             "Capivari": "(19) 92001-6371",
             "Limeira": "(19) 92001-6371",
             "Sorocaba": "(11) 92015-4693",
+            "Santos": "13 92003-6210",
 
             "Florianópolis": "(48) 93300-4291",
             "São José": "(48) 93300-4291",
@@ -200,7 +203,9 @@ async function gerarPDF() {
             "Itabirito": "(31) 93300-6395",
         };
 
-  const telefone = telefonesMap[cidade] || "Telefone não disponível";
+  const telefone = telefonesMap[cidade] || "Telefone não disponível";*/
+
+  const telefone = window.telefoneCidadeSelecionada || "Telefone não disponível";
 
   // =============================
   // CABEÇALHO DO CLIENTE
