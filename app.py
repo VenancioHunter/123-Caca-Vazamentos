@@ -159,7 +159,7 @@ def attendance():
 @app.route('/add_city', methods=['GET', 'POST'])
 @check_roles(['admin'])
 def add_city():
-    if request.method == 'POST':
+    '''if request.method == 'POST':
         uf_name = request.form['uf']
         city_name = request.form['city']
         phone_number = request.form['phone']
@@ -173,7 +173,8 @@ def add_city():
             return redirect(url_for('add_city'))
         else:
             return "Cidade já existe"
-        
+        db.child("uf").child(uf_name).child(city_name).set(phone_number)
+        return redirect(url_for('add_city'))'''
 
     return render_template('add_city.html')
 
@@ -2656,5 +2657,172 @@ def api_telefone_cidade():
 
     return jsonify({"telefone": telefone})
 
+
+@app.route('/post_transacao_pendente', methods=['POST', 'GET'])
+def post_transacao_pendente():
+
+    dados = request.get_json()
+    print(dados)
+    total_empresa = dados.get("total_empresa")
+    itens = dados.get("itens", [])
+    
+    user = session['name']
+    id_origem = itens[0]['tecnico_id']
+    
+    origem = itens[0]['tecnico_nome']
+    
+    type = "c"
+    
+    amount = "{:.2f}".format(total_empresa, 2)
+    
+    category = "Serviço"
+    #especie_method = request.form.get('especie').title()
+    especie = f'Remessa PIX'
+    destinatario = "Central Vazamentos"
+    
+    lista_os = [item['numero_os'] for item in itens]
+    lista_numeros_os = ", ".join(lista_os)
+    #taxa = request.form.get('taxa')
+    description = f'Pagamento referente às OSs: {lista_numeros_os}.'
+
+    agora = datetime.now()
+    
+    Financeiro.post_transaction_credito_tecnico(date=agora, type=type, amount=amount, category=category, description=description, especie=especie, destinatario=destinatario, user=user, origem=origem, id_origem=id_origem)
+
+    id_transaction = itens[0]['id_transaction']
+    
+
+     
+    for item in itens:
+        date = item['date_payment']
+        print(date)
+        try:
+            date = datetime.strptime(date, '%Y-%m-%d')
+        except ValueError:
+                return "Formato de data inválido."
+                
+        year = str(date.year)
+        month = f"{date.month:02d}"
+        day = f"{date.day:02d}"
+            
+        get_service_pedente = db.child("financeiro").child("transactions_pendentes").child(year).child(month).child(day).child(item['id_transaction']).get().val()
+        print(get_service_pedente)
+        db.child("financeiro").child("transactions_confirmadas").child(year).child(month).child(day).push(get_service_pedente)
+        db.child("financeiro").child("transactions_pendentes").child(year).child(month).child(day).child(item['id_transaction']).remove()
+
+        
+    return True
+
+@app.route('/transacao_pendente_tecnico')
+@check_roles(['tecnico'])
+def transacao_pendente_tecnico():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    tecnico_id = session.get("user")  # <-- Certifique-se que você salva o ID do técnico na sessão
+
+    pendentes = {}
+    data = db.child("financeiro").child("transactions_pendentes").get().val() or {}
+
+    for ano, meses in data.items():
+        for mes, dias in meses.items():
+            for dia, transacoes in dias.items():
+                for pendente_id, pendente in transacoes.items():
+                    # FILTRA APENAS AS OS DO TÉCNICO LOGADO
+                    if pendente.get("tecnico_id") == tecnico_id:
+
+                        pendentes[pendente_id] = {
+                            **pendente,
+                            "ano": ano,
+                            "mes": mes,
+                            "dia": dia,
+                            "id": pendente_id
+                        }
+
+    return render_template('transacao_pendente_tecnico.html', pendentes=pendentes)
+
+
+@app.route("/cancel_transaction_pendding_tecnico", methods=["POST"])
+def cancel_transaction_pendding_tecnico():
+    data = request.get_json()
+    transaction_id = data.get("id")
+    date_payment = data.get("date_payment")
+
+    try:
+        date = datetime.strptime(date_payment, '%Y-%m-%d')
+    except ValueError:
+            return "Formato de data inválido."
+            
+    year = str(date.year)
+    month = f"{date.month:02d}"
+    day = f"{date.day:02d}"
+
+    data = db.child("financeiro").child("transactions_pendentes").child(year).child(month).child(day).child(transaction_id).get().val()
+
+    id_os = data.get("id_os")
+    city_os = data.get("city_os")
+    date_os = data.get("date_os")
+    tecnico_id = data.get("tecnico_id")
+    id_create_transaction_user = data.get("id_create_transaction_user")
+    id_create_transaction_wallet = data.get("id_create_transaction_wallet")
+
+
+    try:
+        date = datetime.strptime(date_os, '%Y-%m-%d')
+    except ValueError:
+            return "Formato de data inválido."
+            
+    year_os = str(date.year)
+    month_os = f"{date.month:02d}"
+    day_os = f"{date.day:02d}"
+
+
+
+    try:
+
+        db.child("ordens_servico").child(city_os).child(year_os).child(month_os).child(day_os).child(id_os).child('status_paymment').remove()
+
+        db.child("users").child(tecnico_id).child('wallet').child('cities').child(city_os).child(year).child(month).child(day).child('transactions').child('success').child(id_create_transaction_user).remove()
+
+        db.child("wallet").child(city_os).child(year).child(month).child(day).child('transactions').child('success').child(id_create_transaction_wallet).remove()
+
+        db.child("financeiro").child("transactions_pendentes").child(year).child(month).child(day).child(transaction_id).remove()
+
+        print(f"ID da transação a ser deletada: {transaction_id}")
+        print(f"Data de pagamento associada: {date_payment}")
+        print(city_os)
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+    
+
+@app.route("/atualizar_valor_os", methods=["POST"])
+def atualizar_valor_os():
+    data = request.get_json()
+
+    date = data.get("date")
+    os_id = data.get("os_id")
+    city = data.get("city")
+    newprice_raw = data.get("newprice")
+
+    # Converte o valor monetário (ex: "1.250,00" → 1250.00)
+    new_price = convert_monetary_value(newprice_raw)
+
+    # Converte a data
+    date = datetime.strptime(date, "%Y-%m-%d")
+    year = str(date.year)
+    month = f"{date.month:02d}"
+    day = f"{date.day:02d}"
+
+    # Atualiza o valor da OS no Firebase
+    db.child("ordens_servico").child(city).child(year).child(month).child(day).child(os_id).update({"newprice": new_price})
+
+    return jsonify({
+        "success": True,
+        "newprice": new_price
+    })
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5037)
+    app.run(debug=True, port=5036)
