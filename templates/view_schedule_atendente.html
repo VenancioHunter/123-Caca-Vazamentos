@@ -48,10 +48,23 @@ content %}
       </ul>
     </div>
     <div align="end">
-      <h5>Valor R$ {{ os.newprice }}</h5>
+      <h5>Valor R$ <span id="valor-os-{{ os_id }}">{{ os.newprice }}</span></h5>
     </div>
   </div>
   <div class="card-footer">
+    <div class="row mb-4">
+      <div class="col"></div>
+      <div class="col" align="end">
+        <button
+          class="btn btn-sm btn-outline-primary mt-2"
+          data-toggle="modal"
+          data-target="#editarValorModal"
+          onclick="abrirModalEditarValor('{{ os_id }}', '{{ os.city }}', '{{ os.newprice }}')"
+        >
+          Editar Valor
+        </button>
+      </div>
+    </div>
     <div class="row">
       <div class="col">
         {% if os.status_paymment == "recebido" or os.status_paymment ==
@@ -264,9 +277,87 @@ content %}
   </div>
 </div>
 
+<div
+  class="modal fade"
+  id="editarValorModal"
+  tabindex="-1"
+  role="dialog"
+  aria-labelledby="editarValorModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Valor da OS</h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="editOsId" />
+        <input type="hidden" id="editOsCity" />
+        <input type="text" value="{{date}}" id="editOsDate" hidden />
+
+        <div class="form-group">
+          <label>Novo Valor</label>
+          <input
+            type="tel"
+            class="form-control"
+            id="editOsValor"
+            placeholder="0,00"
+          />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick="salvarNovoValorOs()"
+        >
+          Salvar Valor
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay para bloquear a tela de fundo -->
+<div class="overlay" id="overlay"></div>
+
+<!-- Pop-up -->
+<div class="popup" id="popup" align="center">
+  <div class="spinner-border" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+  <div>
+    <span>Salvando...</span>
+  </div>
+</div>
+
 {% else %}
 <p class="no-records">Nenhum serviço agendado para essa data.</p>
 {% endif %}
+
+<script>
+  function mostrarPopup() {
+    var overlay = document.getElementById("overlay");
+    var popup = document.getElementById("popup");
+
+    overlay.style.display = "block";
+    popup.style.display = "block";
+
+    // Bloqueia a interação com a tela de fundo
+    overlay.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  }
+</script>
 
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
@@ -415,4 +506,66 @@ content %}
     dateInput.value = formattedDate;
   });
 </script>
+<script src="../static/js/formatarValor.js"></script>
+<script>
+  function abrirModalEditarValor(osId, city, valorAtual) {
+    document.getElementById("editOsId").value = osId;
+    document.getElementById("editOsCity").value = city;
+
+    const inputValor = document.getElementById("editOsValor");
+
+    // Remove tudo que não é número
+    inputValor.value = String(valorAtual).replace(/\D/g, "");
+
+    // 🔥 Dispara o input para aplicar a máscara existente
+    inputValor.dispatchEvent(new Event("input"));
+  }
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    configurarFormatacaoValor("editOsValor");
+  });
+</script>
+
+<script>
+  function salvarNovoValorOs() {
+    const osId = document.getElementById("editOsId").value;
+    const city = document.getElementById("editOsCity").value;
+    const valor = document.getElementById("editOsValor").value;
+    const date = document.getElementById("editOsDate").value;
+
+    if (!valor) {
+      alert("Informe um valor válido.");
+      return;
+    }
+
+    mostrarPopup();
+    fetch("/atualizar_valor_os", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        os_id: osId,
+        city: city,
+        newprice: valor,
+        date: date,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          document.getElementById(`valor-os-${osId}`).innerText = valor;
+          window.location.reload();
+          $("#editarValorModal").modal("hide");
+        } else {
+          alert(data.message || "Erro ao atualizar valor.");
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("Erro de comunicação com o servidor.");
+      });
+  }
+</script>
+
 {% endblock %}

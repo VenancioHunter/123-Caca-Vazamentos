@@ -77,22 +77,29 @@ content %}
 
   <div class="dashboard-grid text-center">
     <a class="card-presentation" href="{{ url_for('consulta_agenda') }}">
-      <h5>Agenda</h5>
+      <h5>Agenda de Serviços</h5>
     </a>
 
     <a
       class="card-presentation"
       href="{{ url_for('listar_pendentes_tecnico') }}"
     >
-      <h5>Pagamento Pendente</h5>
+      <h5>Recebimento Pendente</h5>
     </a>
 
     <a class="card-presentation" href="{{ url_for('extrato_tecnico') }}">
-      <h5>Extrato</h5>
+      <h5>Extrato de Serviços</h5>
     </a>
 
     <a class="card-presentation" href="{{ url_for('relatorio_tecnico') }}">
       <h5>Relatório Técnico</h5>
+    </a>
+
+    <a
+      class="card-presentation"
+      href="{{ url_for('transacao_pendente_tecnico') }}"
+    >
+      <h5>Acerto com a Empresa</h5>
     </a>
   </div>
 </div>

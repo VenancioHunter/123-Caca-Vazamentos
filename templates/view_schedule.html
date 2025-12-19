@@ -73,7 +73,7 @@ content %}
   </div>
 
   <div class="card-footer" align="center">
-    <button
+    <!-- <button
       class="btn btn-primary mt-3"
       onclick="gerarRelatorioTecnico(
           '{{ os.name }}',
@@ -84,7 +84,7 @@ content %}
         )"
     >
       Gerar Relatório Técnico
-    </button>
+    </button>-->
     {% if os.status_paymment == "recebido" or os.status_paymment == "pendente"
     %}
     <div>
@@ -160,6 +160,7 @@ content %}
               class="form-control"
               id="amount"
               placeholder="Insira o valor"
+              readonly
             />
             <div class="my-4">
               <label style="font-size: small; font-weight: bold"
@@ -194,6 +195,7 @@ content %}
               class="form-control"
               id="card-valor"
               placeholder="Insira o valor"
+              readonly
             />
             <label for="installments" class="mt-3">Parcelas</label>
             <select class="form-control" id="installments">
@@ -243,6 +245,7 @@ content %}
               class="form-control"
               id="boleto-valor"
               placeholder="Insira o valor"
+              readonly
             />
             <label for="boleto-date" class="mt-3">Data de Vencimento</label>
             <input type="date" class="form-control" id="boleto-date" required />
@@ -593,10 +596,13 @@ content %}
     // Mostra o campo de acordo com a seleção
     if (method === "dinheiro" || method === "pix") {
       document.getElementById("input-amount").classList.remove("d-none");
+      preencherValorTotal("amount");
     } else if (method === "cartao") {
       document.getElementById("credit-card-options").classList.remove("d-none");
+      preencherValorTotal("card-valor");
     } else if (method === "boleto") {
       document.getElementById("boleto-options").classList.remove("d-none");
+      preencherValorTotal("boleto-valor");
     }
   }
 
@@ -747,6 +753,29 @@ content %}
         });
     });
   });
+</script>
+
+<script>
+  function preencherValorTotal(inputId) {
+    if (!currentOsValueService) return;
+
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    // Remove tudo que não for número
+    let valor = String(currentOsValueService).replace(/\D/g, "");
+
+    // Garante pelo menos centavos
+    if (valor.length === 1) valor = "0" + valor;
+    if (valor.length === 0) valor = "000";
+
+    const parteInteira = valor.slice(0, -2);
+    const parteDecimal = valor.slice(-2);
+
+    const inteiroFormatado = parteInteira.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+    input.value = `${inteiroFormatado},${parteDecimal}`;
+  }
 </script>
 
 {% endblock %}
