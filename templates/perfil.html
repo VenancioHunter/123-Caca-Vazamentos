@@ -153,6 +153,7 @@ content %}
             class="form-control"
             aria-describedby="basic-addon1"
             placeholder="Nova porcentagem"
+            id="nova_porcentagem"
           />
         </div>
 
@@ -306,8 +307,8 @@ content %}
 
 <script>
   function updatePercentage(id) {
-    const input = document.querySelector(".form-control");
-    const value = input.value.trim();
+    const input = document.getElementById("nova_porcentagem");
+    const value = input.value.trim().replace(",", "."); // aceita 10,5
 
     if (!value || isNaN(value)) {
       alert("Por favor, insira uma porcentagem válida.");
