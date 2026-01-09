@@ -99,16 +99,26 @@ content %}
     <div class="col-lg-6 col-md-6 col-sm-12">
       <div class="block-box">
         <label class="mb-2 fw-bold">Adicionar Cidade</label>
-        <select class="form-select" id="city-select-add" name="city" required>
+        <input
+          list="listaCidades"
+          id="city-input-add"
+          name="city"
+          class="form-control"
+          placeholder="Digite o nome da cidade"
+          autocomplete="off"
+          required
+        />
+
+        <datalist id="listaCidades">
           {% for city_id, city_name in cities.items() %}
-          <option value="{{ city_name }}">{{ city_name }}</option>
+          <option value="{{ city_name }}"></option>
           {% endfor %}
-        </select>
+        </datalist>
 
         <button
           class="btn btn-primary mt-3"
           type="button"
-          onclick="addCity('{{ id_user }}')"
+          onclick="if(validarCidade()) addCity('{{ id_user }}')"
           style="width: 100%"
         >
           Adicionar Cidade
@@ -255,14 +265,33 @@ content %}
       .catch(() => alert("Ocorreu um erro ao tentar remover a cidade."));
   }
 </script>
+<script>
+  function validarCidade() {
+    const input = document.getElementById("city-input-add");
+    const valor = input.value;
+    const options = document.querySelectorAll("#listaCidades option");
+
+    let existe = false;
+    options.forEach((opt) => {
+      if (opt.value === valor) existe = true;
+    });
+
+    if (!existe) {
+      alert("Selecione uma cidade válida da lista.");
+      return false;
+    }
+    return true;
+  }
+</script>
 
 <script>
   function addCity(id) {
-    const selectedCity = document.getElementById("city-select-add").value;
+    const city = document.getElementById("city-input-add").value.trim();
+
     fetch("/user_add_city", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ city: selectedCity, id: id }),
+      body: JSON.stringify({ city: city, id: id }),
     })
       .then((response) => response.json())
       .then((data) => {
