@@ -177,29 +177,6 @@ def add_city():
 
     return render_template('add_city.html')
 
-'''
-@app.route('/add_city', methods=['GET', 'POST'])
-@check_roles(['admin'])
-def add_city():
-    if request.method == 'POST':
-        uf_name = request.form['uf']
-        city_name = request.form['city']
-        phone_number = request.form['phone']
-
-        # Verifique se a cidade já existe
-        cities = db.child("cities").get().val() or {}
-        if city_name not in cities.values():
-            db.child("cities").push(city_name)
-
-            db.child("uf").child(uf_name).child(city_name).set(phone_number)
-            return redirect(url_for('add_city'))
-        else:
-            return "Cidade já existe"
-        db.child("uf").child(uf_name).child(city_name).set(phone_number)
-        return redirect(url_for('add_city'))
-
-    return render_template('add_city.html')'''
-
 @app.route('/add_city_sistema', methods=['GET', 'POST'])
 @check_roles(['admin'])
 def add_city_sistema():
@@ -2679,7 +2656,6 @@ def api_telefone_cidade():
 
     return jsonify({"telefone": telefone})
 
-
 @app.route('/post_transacao_pendente', methods=['POST', 'GET'])
 def post_transacao_pendente():
 
@@ -2818,41 +2794,12 @@ def cancel_transaction_pendding_tecnico():
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
     
-
-@app.route("/atualizar_valor_os", methods=["POST"])
-def atualizar_valor_os():
-    data = request.get_json()
-
-    date = data.get("date")
-    os_id = data.get("os_id")
-    city = data.get("city")
-    newprice_raw = data.get("newprice")
-
-    # Converte o valor monetário (ex: "1.250,00" → 1250.00)
-    new_price = convert_monetary_value(newprice_raw)
-
-    # Converte a data
-    date = datetime.strptime(date, "%Y-%m-%d")
-    year = str(date.year)
-    month = f"{date.month:02d}"
-    day = f"{date.day:02d}"
-
-    # Atualiza o valor da OS no Firebase
-    db.child("ordens_servico").child(city).child(year).child(month).child(day).child(os_id).update({"newprice": new_price})
-
-    return jsonify({
-        "success": True,
-        "newprice": new_price
-    })
-
-
 @app.route('/comissao_atendimento', methods=['GET', 'POST'])
 @check_roles(['admin'])
 def comissao_atendimento():
     if 'user' not in session:
         return redirect(url_for('login'))
     return render_template('comissao_atendimento.html')
-
 
 @app.route("/buscar_comissoes", methods=["POST"])
 def buscar_comissoes():
@@ -2895,151 +2842,5 @@ def buscar_comissoes():
         return jsonify({"erro": str(e)}), 500
 
 
-@app.route("/kanban")
-def kanban():
-    role = session.get("role")
-    user_id = session.get("user")
-    user_name = session.get("name")
-
-    tasks = db.child("kanban").child("tasks").get().val() or {}
-
-    lista = []
-
-    for tid, t in tasks.items():
-        t["id"] = tid
-
-        # ===== prepara chat =====
-        comentarios = t.get("comentarios", {})
-        chat = []
-
-        for c in comentarios.values():
-            chat.append(c)
-
-        chat.sort(key=lambda x: x.get("data", ""))
-        t["chat"] = chat[-3:]  # últimos 3 comentários
-
-        # ===== última atualização =====
-        historico = t.get("historico", {})
-        if historico:
-            ultima = list(historico.values())[-1]
-            t["ultimo_status_em"] = ultima.get("data")
-        else:
-            t["ultimo_status_em"] = t.get("created_at")
-
-        # ===== FILTRO (UM ÚNICO APPEND) =====
-        if role == "admin" or t.get("responsavel_id") == user_id:
-            lista.append(t)
-
-
-    users = db.child("users").get().val() or {}
-
-    return render_template(
-        "kanban.html",
-        tasks=lista,
-        users=users,
-        role=role,
-        user_id=user_id,
-        user_name=user_name
-    )
-
-
-@app.route("/kanban/criar", methods=["POST"])
-def criar_task():
-    data = request.form
-
-    responsavel_id = data.get("responsavel_id")
-    responsavel = db.child("users").child(responsavel_id).get().val()
-
-    payload = {
-        "titulo": data.get("titulo"),
-        "descricao": data.get("descricao"),
-        "status": "todo",
-        "prioridade": data.get("prioridade"),
-        "responsavel_id": responsavel_id,
-        "responsavel_nome": responsavel.get("name"),
-        "role_responsavel": responsavel.get("role"),
-        "criado_por_id": session.get("user"),
-        "criado_por_nome": session.get("name"),
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
-    }
-
-    db.child("kanban").child("tasks").push(payload)
-    return redirect(url_for("kanban"))
-
-@app.route("/kanban/mover", methods=["POST"])
-def mover_task():
-    data = request.get_json() or {}
-    task_id = data.get("id")
-    novo_status = data.get("status")
-    print(data)
-    
-    if not task_id or novo_status not in ["todo", "doing", "done"]:
-        return jsonify(success=False), 400
-
-    # Pega status anterior
-    status_anterior = db.child("kanban").child("tasks").child(task_id).child("status").get().val()
-
-    # Atualiza status
-    db.child("kanban").child("tasks").child(task_id).update({"status": novo_status})
-
-    # Registra histórico
-    db.child("kanban").child("tasks").child(task_id).child("historico").push({
-        "de": status_anterior,
-        "para": novo_status,
-        "user_id": session.get("user"),
-        "user_nome": session.get("name"),
-        "data": datetime.now().strftime("%Y-%m-%d %H:%M")
-    })
-
-    return jsonify(success=True)
-
-@app.route("/kanban/comentar", methods=["POST"])
-def comentar_task():
-    data = request.get_json() or {}
-    task_id = data.get("id")
-    texto = data.get("texto", "").strip()
-
-    if not task_id or not texto:
-        return jsonify(success=False), 400
-
-    db.child("kanban").child("tasks").child(task_id).child("comentarios").push({
-        "texto": texto,
-        "user_nome": session.get("name"),
-        "data": datetime.now().strftime("%Y-%m-%d %H:%M")
-    })
-
-    return jsonify(success=True)
-
-@app.route("/kanban/task/<task_id>")
-def obter_task(task_id):
-    task = db.child("kanban").child("tasks").child(task_id).get().val()
-    return jsonify(task)
-
-@app.route("/kanban/excluir", methods=["POST"])
-def excluir_task():
-    data = request.get_json() or {}
-    task_id = data.get("id")
-
-    if not task_id:
-        return jsonify(success=False, error="ID inválido"), 400
-
-    role = session.get("role")
-    user_id = session.get("user")
-
-    task_ref = db.child("kanban").child("tasks").child(task_id)
-    task = task_ref.get().val()
-
-    if not task:
-        return jsonify(success=False, error="Tarefa não encontrada"), 404
-
-    # Permissões: admin pode excluir tudo; não-admin só exclui se foi o criador
-    if role != "admin" and task.get("criado_por_id") != user_id:
-        return jsonify(success=False, error="Sem permissão"), 403
-
-    db.child("kanban").child("tasks").child(task_id).remove()
-    return jsonify(success=True)
-
-
-
 if __name__ == '__main__':
-    app.run(debug=True, port=5036)
+    app.run(debug=True, port=5037)
