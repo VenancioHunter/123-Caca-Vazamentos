@@ -235,12 +235,12 @@ async function gerarPDF() {
   pdf.setFontSize(14);
   pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
-  pdf.text(`Central Vazamentos`, 130, 20);
+  pdf.text(`123 Caça Vazamentos`, 130, 20);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
-  pdf.text(`CNPJ: 43.973.146/0001-26`, 130, 25);
+  pdf.text(`CNPJ: 41.713.002/0001-05`, 130, 25);
   pdf.text(`Tel: ${telefone}`, 130, 30);
-  pdf.text(`E-mail: comercial@centralvazamentos.com.br`, 130, 35);
+  pdf.text(`E-mail: 123cacavazamentos@gmail.com`, 130, 35);
 
   pdf.setTextColor(0, 0, 0);
 
