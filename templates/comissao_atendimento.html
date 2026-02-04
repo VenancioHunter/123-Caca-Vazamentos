@@ -1,0 +1,486 @@
+<!-- templates/layout.html -->
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Comissões{% endblock %}</title>
+    <!--<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        background-image: linear-gradient(
+          to right,
+          rgb(240, 240, 240, 1),
+          rgb(240, 240, 240, 1)
+        );
+      }
+      .footer-fixed {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: #222;
+        padding: 10px;
+        border-top: 1px solid #ddd;
+        text-align: center;
+        font-size: 14px;
+        z-index: 9999;
+      }
+    </style>
+    <link href="../static/css/popup.css" rel="stylesheet" />
+    <script src="../static/js/formatarValor.js"></script>
+  </head>
+
+  <body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        {% if session.get('user') %} {% set user_role = session.get('role') %}
+        {% if user_role == 'user' %}
+        <a class="navbar-brand" href="{{ url_for('dashboard') }}"
+          >Central Vazamentos</a
+        >
+        {% endif %} {% if user_role == 'admin' %}
+        <a class="navbar-brand" href="{{ url_for('admin') }}"
+          >Central Vazamentos</a
+        >
+        {% endif %} {% if user_role == 'tecnico' %}
+        <a class="navbar-brand" href="{{ url_for('dashboard_tecnico') }}"
+          >Central Vazamentos</a
+        >
+        {% endif %}
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav">
+            {% if user_role == 'user' %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('dashboard') }}">Início</a>
+            </li>
+            {% endif %} {% if user_role == 'admin' %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('users') }}">Usuários</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('add_service') }}"
+                >Adicionar Serviço</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('add_city') }}"
+                >Adicionar Cidade</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('link_user_city') }}"
+                >Vincular</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('view_all_attendances') }}"
+                >Consultar Atendimentos</a
+              >
+            </li>
+            {% endif %} {% if user_role == 'tecnico' %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('dashboard_tecnico') }}"
+                >Início</a
+              >
+            </li>
+            {% endif %}
+
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('logout') }}">Sair</a>
+            </li>
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+    </nav>
+
+    <div>
+      <div class="container my-4">
+        <div class="row">
+          <!-- Select Ano -->
+          <div class="col-md-3">
+            <label for="ano">Ano:</label>
+            <select id="ano" class="form-select">
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+            </select>
+          </div>
+
+          <!-- Select Mês -->
+          <div class="col-md-3">
+            <label for="mes">Mês:</label>
+            <select id="mes" class="form-select">
+              <option value="1">Janeiro</option>
+              <option value="2">Fevereiro</option>
+              <option value="3">Março</option>
+              <option value="4">Abril</option>
+              <option value="5">Maio</option>
+              <option value="6">Junho</option>
+              <option value="7">Julho</option>
+              <option value="8">Agosto</option>
+              <option value="9">Setembro</option>
+              <option value="10">Outubro</option>
+              <option value="11">Novembro</option>
+              <option value="12">Dezembro</option>
+            </select>
+          </div>
+
+          <!-- Botão -->
+          <div class="col-md-3 d-flex align-items-end">
+            <button id="btnBuscar" class="btn btn-primary w-100">Buscar</button>
+          </div>
+        </div>
+
+        <!-- Subfiltros -->
+        <div class="row mt-3">
+          <!-- Cidade -->
+          <div class="col-md-3">
+            <label for="filtroCidade">Cidade:</label>
+            <select id="filtroCidade" class="form-select">
+              <option value="">Todas</option>
+            </select>
+          </div>
+
+          <!-- Técnico -->
+          <div class="col-md-3">
+            <label for="filtroTecnico">Atendente:</label>
+            <select id="filtroTecnico" class="form-select">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <!-- Status -->
+          <div class="col-md-3">
+            <label for="filtroStatus">Status:</label>
+            <select
+              id="filtroStatus"
+              class="form-select"
+              style="pointer-events: none"
+            >
+              <option value="">Todos</option>
+              <option value="recebido" selected>Recebido</option>
+              <option value="cancelada">Cancelada</option>
+              <option value="pendente">Pendente</option>
+              <option value="aguardando">Aguardando</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button id="btnPdf" class="btn btn-danger">📄 Gerar PDF</button>
+
+      <div id="tabelaContainer">
+        <!-- Tabela -->
+        <table class="table table-dark table-striped" id="tabela-os">
+          <thead>
+            <tr>
+              <th>Número OS</th>
+              <th>Cliente</th>
+              <th>Telefone</th>
+              <th>Cidade</th>
+              <th>Serviço</th>
+              <th>Atendente</th>
+              <th>Valor</th>
+              <th>Status</th>
+              <th>Comissão</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <footer class="footer-fixed" id="footerComissao">
+        <strong>Total de Comissões:</strong> R$ 0,00
+      </footer>
+    </div>
+
+    <!-- Overlay para bloquear a tela de fundo -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Pop-up -->
+    <div class="popup" id="popup" align="center">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <div>
+        <span>Aguarde...</span>
+      </div>
+    </div>
+
+    <script>
+      function mostrarPopup() {
+        var overlay = document.getElementById("overlay");
+        var popup = document.getElementById("popup");
+
+        overlay.style.display = "block";
+        popup.style.display = "block";
+
+        // Bloqueia a interação com a tela de fundo
+        overlay.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+      }
+
+      function fecharPopup() {
+        var overlay = document.getElementById("overlay");
+        var popup = document.getElementById("popup");
+
+        overlay.style.display = "none";
+        popup.style.display = "none";
+      }
+    </script>
+
+    <script>
+      let ordensCache = []; // cache global das ordens
+
+      function preencherFiltros(ordens) {
+        const cidades = [...new Set(ordens.map((os) => os.city))];
+        const tecnicos = [
+          ...new Set(ordens.map((os) => os.atendente || "Sem Técnico")),
+        ];
+
+        const filtroCidade = document.getElementById("filtroCidade");
+        const filtroTecnico = document.getElementById("filtroTecnico");
+
+        filtroCidade.innerHTML = '<option value="">Todas</option>';
+        cidades.forEach((cidade) => {
+          filtroCidade.innerHTML += `<option value="${cidade}">${cidade}</option>`;
+        });
+
+        filtroTecnico.innerHTML = '<option value="">Todos</option>';
+        tecnicos.forEach((tec) => {
+          filtroTecnico.innerHTML += `<option value="${tec}">${tec}</option>`;
+        });
+      }
+
+      function calcularComissao(os) {
+        const valor = parseFloat(os.valor_liquido) || 0;
+        if (valor <= 0) return 0;
+
+        // Define a base de comissão: 2.5 normal, 5.0 se for Reparo
+        const base = os.service?.toLowerCase().includes("reparo") ? 5.0 : 2.5;
+
+        // Calcula faixas de 250 em 250
+        let faixas = Math.ceil(valor / 250);
+        return base * faixas;
+      }
+
+      function renderTabela() {
+        const tbody = document.querySelector("#tabela-os tbody");
+        tbody.innerHTML = "";
+
+        const filtroCidade = document.getElementById("filtroCidade").value;
+        const filtroTecnico = document.getElementById("filtroTecnico").value;
+        const filtroStatus = document.getElementById("filtroStatus").value;
+
+        const filtradas = ordensCache.filter((os) => {
+          return (
+            (filtroCidade === "" || os.city === filtroCidade) &&
+            (filtroTecnico === "" || os.tecnico_nome === filtroTecnico) &&
+            (filtroStatus === "" || os.status === filtroStatus)
+          );
+        });
+
+        let totalComissao = 0;
+
+        filtradas.forEach((os) => {
+          const tr = document.createElement("tr");
+          const podeFinalizar = os.status?.toLowerCase() === "aguardando"; /*||
+            os.status?.toLowerCase() === "pendente"*/
+          const valor = parseFloat(os.valor_liquido) || 0;
+
+          // Calcular comissão
+          const comissao = calcularComissao(os);
+          totalComissao += comissao;
+
+          tr.innerHTML = `
+        <td>${os.numero_os || ""}</td>
+        <td>${os.client}</td>
+        <td>${os.client_phone}</td>
+        <td>${os.city_os}</td>
+        <td>${os.service}</td>
+        <td>${os.atendente || "Sem Técnico"}</td>
+        <td>${os.valor_liquido}</td>
+        
+        <td>
+          <span class="badge ${
+            os.status?.toLowerCase() === "recebido"
+              ? "bg-success"
+              : os.status?.toLowerCase() === "cancelada"
+              ? "bg-danger"
+              : os.status?.toLowerCase() === "pendente"
+              ? "bg-primary"
+              : "bg-warning"
+          }" style="text-transform: capitalize;">
+            ${os.status || "Aguardando"}
+          </span>
+        </td>
+        
+        <td>💰 R$ ${comissao.toFixed(2)}</td>
+    
+      `;
+          tbody.appendChild(tr);
+        });
+        // 🧾 Atualiza o valor total das comissões no footer
+        const footer = document.getElementById("footerComissao");
+        if (footer) {
+          footer.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 600px; margin: 0 auto; flex-wrap: wrap; gap: 8px;">
+      <div>
+        <strong style="color:#00e6b8;">Total de Comissões:</strong>
+        <span style="color:#00e6b8;">R$ ${totalComissao.toFixed(2)}</span>
+      </div>
+      <div>
+        <strong style="color:#00e6b8;">Total de Serviços:</strong>
+        <span style="color:#00e6b8;">${filtradas.length}</span>
+      </div>
+    </div>
+  `;
+        }
+      }
+
+      document.getElementById("btnPdf").addEventListener("click", () => {
+        const areaPDF = document.querySelector("#tabelaContainer");
+        const footer = document.getElementById("footerComissao");
+
+        // Clona a área completa para o PDF
+        const clone = document.createElement("div");
+        const footerClone = footer.cloneNode(true);
+
+        // Remove o estilo "fixed" apenas no clone
+        footerClone.style.position = "relative";
+        footerClone.style.bottom = "auto";
+        footerClone.style.marginTop = "30px";
+
+        // Monta a estrutura
+        clone.innerHTML = `
+    <h2 style="text-align:center; margin-bottom: 20px;">Relatório de Ordens de Serviço</h2>
+    ${areaPDF.outerHTML}
+    ${footerClone.outerHTML}
+  `;
+
+        const opt = {
+          margin: 0.5,
+          filename: `relatorio-os-${new Date().toLocaleDateString(
+            "pt-BR"
+          )}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: "cm", format: "a4", orientation: "landscape" },
+          pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+        };
+
+        html2pdf().from(clone).set(opt).save();
+      });
+
+      document
+        .getElementById("btnBuscar")
+        .addEventListener("click", function () {
+          const ano = document.getElementById("ano").value;
+          const mes = document.getElementById("mes").value;
+          mostrarPopup();
+          fetch("/buscar_comissoes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ano: ano, mes: mes }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              ordensCache = data.ordens || [];
+              preencherFiltros(ordensCache);
+              renderTabela();
+            })
+            .finally(() => {
+              fecharPopup();
+            })
+            .catch((error) => console.error("Erro:", error));
+        });
+
+      // eventos para subfiltros
+      document
+        .getElementById("filtroCidade")
+        .addEventListener("change", renderTabela);
+      document
+        .getElementById("filtroTecnico")
+        .addEventListener("change", renderTabela);
+      document
+        .getElementById("filtroStatus")
+        .addEventListener("change", renderTabela);
+    </script>
+    <script>
+      function formatarData(timestamp) {
+        if (!timestamp) return "";
+
+        // Garante que seja número
+        const ts = parseFloat(timestamp) * 1000;
+        const data = new Date(ts);
+
+        // Formatar como dd/mm/yyyy HH:MM
+        const dia = String(data.getDate()).padStart(2, "0");
+        const mes = String(data.getMonth() + 1).padStart(2, "0");
+        const ano = data.getFullYear();
+        const horas = String(data.getHours()).padStart(2, "0");
+        const minutos = String(data.getMinutes()).padStart(2, "0");
+
+        return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
+      }
+
+      function formatarDataHora(dataHoraStr) {
+        if (!dataHoraStr) return "";
+
+        // Quebra a string em [data, hora]
+        const [data, hora] = dataHoraStr.split(" ");
+        const [ano, mes, dia] = data.split("-");
+
+        return `${dia}/${mes}/${ano} ${hora}`;
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+    <script>
+      const { DateTime } = luxon;
+      const mesAtual = DateTime.now().setZone("America/Sao_Paulo").month;
+      document.getElementById("mes").value = mesAtual;
+    </script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+      integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"
+      integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>
