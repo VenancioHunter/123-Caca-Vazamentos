@@ -2840,6 +2840,150 @@ def buscar_comissoes():
 
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
+    
+@app.route("/kanban")
+def kanban():
+    role = session.get("role")
+    user_id = session.get("user")
+    user_name = session.get("name")
+
+    tasks = db.child("kanban").child("tasks").get().val() or {}
+
+    lista = []
+
+    for tid, t in tasks.items():
+        t["id"] = tid
+
+        # ===== prepara chat =====
+        comentarios = t.get("comentarios", {})
+        chat = []
+
+        for c in comentarios.values():
+            chat.append(c)
+
+        chat.sort(key=lambda x: x.get("data", ""))
+        t["chat"] = chat[-3:]  # últimos 3 comentários
+
+        # ===== última atualização =====
+        historico = t.get("historico", {})
+        if historico:
+            ultima = list(historico.values())[-1]
+            t["ultimo_status_em"] = ultima.get("data")
+        else:
+            t["ultimo_status_em"] = t.get("created_at")
+
+        # ===== FILTRO (UM ÚNICO APPEND) =====
+        if role == "admin" or t.get("responsavel_id") == user_id:
+            lista.append(t)
+
+
+    users = db.child("users").get().val() or {}
+
+    return render_template(
+        "kanban.html",
+        tasks=lista,
+        users=users,
+        role=role,
+        user_id=user_id,
+        user_name=user_name
+    )
+
+
+@app.route("/kanban/criar", methods=["POST"])
+def criar_task():
+    data = request.form
+
+    responsavel_id = data.get("responsavel_id")
+    responsavel = db.child("users").child(responsavel_id).get().val()
+
+    payload = {
+        "titulo": data.get("titulo"),
+        "descricao": data.get("descricao"),
+        "status": "todo",
+        "prioridade": data.get("prioridade"),
+        "responsavel_id": responsavel_id,
+        "responsavel_nome": responsavel.get("name"),
+        "role_responsavel": responsavel.get("role"),
+        "criado_por_id": session.get("user"),
+        "criado_por_nome": session.get("name"),
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+    }
+
+    db.child("kanban").child("tasks").push(payload)
+    return redirect(url_for("kanban"))
+
+@app.route("/kanban/mover", methods=["POST"])
+def mover_task():
+    data = request.get_json() or {}
+    task_id = data.get("id")
+    novo_status = data.get("status")
+    print(data)
+    
+    if not task_id or novo_status not in ["todo", "doing", "done"]:
+        return jsonify(success=False), 400
+
+    # Pega status anterior
+    status_anterior = db.child("kanban").child("tasks").child(task_id).child("status").get().val()
+
+    # Atualiza status
+    db.child("kanban").child("tasks").child(task_id).update({"status": novo_status})
+
+    # Registra histórico
+    db.child("kanban").child("tasks").child(task_id).child("historico").push({
+        "de": status_anterior,
+        "para": novo_status,
+        "user_id": session.get("user"),
+        "user_nome": session.get("name"),
+        "data": datetime.now().strftime("%Y-%m-%d %H:%M")
+    })
+
+    return jsonify(success=True)
+
+@app.route("/kanban/comentar", methods=["POST"])
+def comentar_task():
+    data = request.get_json() or {}
+    task_id = data.get("id")
+    texto = data.get("texto", "").strip()
+
+    if not task_id or not texto:
+        return jsonify(success=False), 400
+
+    db.child("kanban").child("tasks").child(task_id).child("comentarios").push({
+        "texto": texto,
+        "user_nome": session.get("name"),
+        "data": datetime.now().strftime("%Y-%m-%d %H:%M")
+    })
+
+    return jsonify(success=True)
+
+@app.route("/kanban/task/<task_id>")
+def obter_task(task_id):
+    task = db.child("kanban").child("tasks").child(task_id).get().val()
+    return jsonify(task)
+
+@app.route("/kanban/excluir", methods=["POST"])
+def excluir_task():
+    data = request.get_json() or {}
+    task_id = data.get("id")
+
+    if not task_id:
+        return jsonify(success=False, error="ID inválido"), 400
+
+    role = session.get("role")
+    user_id = session.get("user")
+
+    task_ref = db.child("kanban").child("tasks").child(task_id)
+    task = task_ref.get().val()
+
+    if not task:
+        return jsonify(success=False, error="Tarefa não encontrada"), 404
+
+    # Permissões: admin pode excluir tudo; não-admin só exclui se foi o criador
+    if role != "admin" and task.get("criado_por_id") != user_id:
+        return jsonify(success=False, error="Sem permissão"), 403
+
+    db.child("kanban").child("tasks").child(task_id).remove()
+    return jsonify(success=True)
 
 
 if __name__ == '__main__':
