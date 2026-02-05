@@ -2985,6 +2985,32 @@ def excluir_task():
     db.child("kanban").child("tasks").child(task_id).remove()
     return jsonify(success=True)
 
+@app.route("/atualizar_valor_os", methods=["POST"])
+def atualizar_valor_os():
+    data = request.get_json()
+
+    date = data.get("date")
+    os_id = data.get("os_id")
+    city = data.get("city")
+    newprice_raw = data.get("newprice")
+
+    # Converte o valor monetário (ex: "1.250,00" → 1250.00)
+    new_price = convert_monetary_value(newprice_raw)
+
+    # Converte a data
+    date = datetime.strptime(date, "%Y-%m-%d")
+    year = str(date.year)
+    month = f"{date.month:02d}"
+    day = f"{date.day:02d}"
+
+    # Atualiza o valor da OS no Firebase
+    db.child("ordens_servico").child(city).child(year).child(month).child(day).child(os_id).update({"newprice": new_price})
+
+    return jsonify({
+        "success": True,
+        "newprice": new_price
+    })
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5037)
