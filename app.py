@@ -1594,6 +1594,7 @@ def adm_lista_paymments_pendentes():
     # Renderizar as transações pendentes
     return render_template('adm_lista_pendentes.html', transactions=all_pendding_transactions, ano=ano, mes=mes)
 
+
 @app.route('/update_pendding', methods=['POST', 'GET'])
 def update_pendding():
 
@@ -3010,6 +3011,8 @@ def atualizar_valor_os():
         "success": True,
         "newprice": new_price
     })
+
+
 
 
 if __name__ == '__main__':
