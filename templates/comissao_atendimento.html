@@ -128,9 +128,8 @@
           <div class="col-md-3">
             <label for="ano">Ano:</label>
             <select id="ano" class="form-select">
-              <option value="2023">2023</option>
-              <option value="2024">2024</option>
-              <option value="2025" selected>2025</option>
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
             </select>
           </div>
 
@@ -263,7 +262,7 @@
       function preencherFiltros(ordens) {
         const cidades = [...new Set(ordens.map((os) => os.city))];
         const tecnicos = [
-          ...new Set(ordens.map((os) => os.tecnico_nome || "Sem Técnico")),
+          ...new Set(ordens.map((os) => os.atendente || "Sem Técnico")),
         ];
 
         const filtroCidade = document.getElementById("filtroCidade");
@@ -281,7 +280,7 @@
       }
 
       function calcularComissao(os) {
-        const valor = parseFloat(os.newprice) || 0;
+        const valor = parseFloat(os.valor_liquido) || 0;
         if (valor <= 0) return 0;
 
         // Define a base de comissão: 2.5 normal, 5.0 se for Reparo
@@ -314,7 +313,7 @@
           const tr = document.createElement("tr");
           const podeFinalizar = os.status?.toLowerCase() === "aguardando"; /*||
             os.status?.toLowerCase() === "pendente"*/
-          const valor = parseFloat(os.newprice) || 0;
+          const valor = parseFloat(os.valor_liquido) || 0;
 
           // Calcular comissão
           const comissao = calcularComissao(os);
@@ -322,12 +321,12 @@
 
           tr.innerHTML = `
         <td>${os.numero_os || ""}</td>
-        <td>${os.name}</td>
-        <td>${os.phone}</td>
-        <td>${os.city}</td>
+        <td>${os.client}</td>
+        <td>${os.client_phone}</td>
+        <td>${os.city_os}</td>
         <td>${os.service}</td>
-        <td>${os.tecnico_nome || "Sem Técnico"}</td>
-        <td>${os.newprice}</td>
+        <td>${os.atendente || "Sem Técnico"}</td>
+        <td>${os.valor_liquido}</td>
         
         <td>
           <span class="badge ${
@@ -406,7 +405,7 @@
           const ano = document.getElementById("ano").value;
           const mes = document.getElementById("mes").value;
           mostrarPopup();
-          fetch("/buscar_ordens", {
+          fetch("/buscar_comissoes", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ano: ano, mes: mes }),

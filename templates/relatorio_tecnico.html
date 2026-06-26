@@ -89,25 +89,18 @@ content %}
             />
           </div>
 
-          <div class="col-md-4">
+          <!-- ESTADO (UF) -->
+          <div class="col-md-3">
             <label for="estado" class="form-label fw-semibold">Estado</label>
             <select id="estado" class="form-select" name="estado" required>
-              <option>Selecionar</option>
-              <option value="AL">Alagoas</option>
-              <option value="BA">Bahia</option>
-              <option value="GO">Goiás</option>
-              <option value="SP">São Paulo</option>
-              <option value="SC">Santa Catarina</option>
-              <option value="RS">Rio Grande do Sul</option>
-              <option value="PR">Paraná</option>
-              <option value="MG">Minas Gerais</option>
-              <option value="DF">Distrito Federal</option>
+              <option value="">Carregando estados...</option>
             </select>
           </div>
 
+          <!-- CIDADE -->
           <div class="col-md-4">
             <label for="cidade" class="form-label fw-semibold">Cidade</label>
-            <select id="cidade" class="form-select" name="cidade">
+            <select id="cidade" class="form-select" name="cidade" required>
               <option value="">Selecione um ESTADO primeiro</option>
             </select>
           </div>
@@ -556,6 +549,33 @@ content %}
         </select>
       </div>
 
+      {% if signature_mode == 'avancada' %}
+      <div class="card border-0 shadow-sm mb-3" id="advanced-signature-component">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <h6 class="mb-1" style="color: #0d5590; font-weight: bold">
+                Assinatura Avançada
+              </h6>
+              <p class="mb-1 small" data-signature-status>
+                Verificando credencial...
+              </p>
+            </div>
+            <button
+              type="button"
+              class="btn btn-outline-primary btn-sm"
+              data-signature-register
+            >
+              Registrar dispositivo
+            </button>
+          </div>
+          <ul class="small mt-3 mb-0 ps-3" data-signature-credentials>
+            <li class="text-muted">Nenhuma credencial registrada.</li>
+          </ul>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="mb-3">
         <label for="data" style="font-size: small; font-weight: bold"
           >Data</label
@@ -835,7 +855,9 @@ content %}
                     type="checkbox"
                     name="localizacao_reparo"
                     value="rededeincendio"
-                    onchange="toggleInput(this, 'detalhes_rededeincendio_reparo')"
+                    onchange="
+                      toggleInput(this, 'detalhes_rededeincendio_reparo')
+                    "
                   />
                   Rede de Incêndio:
                   <input
@@ -1165,6 +1187,105 @@ content %}
 </style>
 
 <script>
+  // ================================
+  // 1. CARREGAR ESTADOS DO FIREBASE
+  // ================================
+  document.addEventListener("DOMContentLoaded", function () {
+    carregarEstados();
+  });
+
+  async function carregarEstados() {
+    try {
+      const resp = await fetch("/api/ufs");
+      const data = await resp.json();
+
+      const estadoSelect = document.getElementById("estado");
+
+      // Limpa e coloca "Selecionar"
+      estadoSelect.innerHTML = `<option value="">Selecionar</option>`;
+
+      // Adiciona os UFs vindos do Firebase
+      data.ufs.forEach((uf) => {
+        const opt = document.createElement("option");
+        opt.value = uf;
+        opt.textContent = uf;
+        estadoSelect.appendChild(opt);
+      });
+
+      // Quando mudar o estado → carregar cidades
+      estadoSelect.addEventListener("change", carregarCidades);
+    } catch (e) {
+      console.error("Erro ao carregar estados:", e);
+    }
+  }
+
+  // =====================================
+  // 2. CARREGAR CIDADES BASEADO NA UF
+  // =====================================
+  async function carregarCidades() {
+    const uf = document.getElementById("estado").value;
+    const cidadeSelect = document.getElementById("cidade");
+
+    if (!uf) {
+      cidadeSelect.innerHTML = `<option value="">Selecione um ESTADO primeiro</option>`;
+      return;
+    }
+
+    cidadeSelect.innerHTML = `<option value="">Carregando...</option>`;
+
+    try {
+      const resp = await fetch(`/api/cidades/${uf}`);
+      const data = await resp.json();
+
+      cidadeSelect.innerHTML = `<option value="">Selecionar</option>`;
+
+      data.cidades.forEach((cidade) => {
+        const opt = document.createElement("option");
+        opt.value = cidade;
+        opt.textContent = cidade;
+        cidadeSelect.appendChild(opt);
+      });
+    } catch (e) {
+      console.error("Erro ao carregar cidades:", e);
+    }
+  }
+
+  // ===================================================
+  // 3. ATUALIZAR TELEFONE DA CIDADE SELECIONADA
+  // ===================================================
+  window.telefoneCidadeSelecionada = null;
+
+  async function atualizarTelefoneCidade() {
+    const uf = document.getElementById("estado").value;
+    const cidade = document.getElementById("cidade").value;
+
+    if (!uf || !cidade) {
+      window.telefoneCidadeSelecionada = null;
+      return;
+    }
+
+    try {
+      const resp = await fetch(
+        `/api/telefone_cidade?uf=${encodeURIComponent(
+          uf,
+        )}&cidade=${encodeURIComponent(cidade)}`,
+      );
+      const data = await resp.json();
+
+      window.telefoneCidadeSelecionada = data.telefone || null;
+    } catch (e) {
+      console.error("Erro ao buscar telefone da cidade:", e);
+      window.telefoneCidadeSelecionada = null;
+    }
+  }
+
+  // Atualiza telefone quando mudar cidade
+  document
+    .getElementById("cidade")
+    .addEventListener("change", atualizarTelefoneCidade);
+</script>
+
+<script>
   function capitalizarNome(input) {
     let palavras = input.value.toLowerCase().split(" ");
 
@@ -1209,7 +1330,7 @@ content %}
 <script>
   function exibirRevisaoDeConta() {
     const tipoRelatorio = document.getElementById(
-      "tipodeservicoVistoria"
+      "tipodeservicoVistoria",
     ).value;
 
     // Oculta todas as divs
@@ -1235,26 +1356,55 @@ content %}
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
 <script>
+  // Define qual modelo de assinatura esta rota utiliza:
+  // "avancada" -> assinatura digital avançada (componente criptográfico)
+  // "classica" -> assinatura cursiva gerada (modelo anterior)
+  window.relatorioSignatureMode = "{{ signature_mode | default('avancada') }}";
+</script>
+{% if signature_mode == 'avancada' %}
+<script src="../static/js/components/advancedSignatureComponent.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", async function () {
+    if (!window.AdvancedSignatureComponent) {
+      return;
+    }
+
+    window.relatorioSignatureComponent = new window.AdvancedSignatureComponent({
+      namespace: "relatorio_tecnico",
+      containerSelector: "#advanced-signature-component",
+      autoPromptRegister: true,
+      requireSignature: false,
+    });
+
+    try {
+      await window.relatorioSignatureComponent.init();
+    } catch (error) {
+      console.error("Falha ao iniciar assinatura avancada:", error);
+    }
+  });
+</script>
+{% endif %}
+<script>
   function formatarCpfCnpj(input) {
     let valor = input.value.replace(/\D/g, ""); // Remove todos os caracteres não numéricos
 
     if (valor.length <= 11) {
-      // Formatar como CPF: 123.456.789-09
+      // CPF: 000.000.000-00
       valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
       valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
       valor = valor.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-    } else if (valor.length > 11 && valor.length <= 14) {
-      // Formatar como CNPJ: 112.345.678/0001-23 ou 12.345.678/0001-23
-      valor = valor.replace(/(\d{3})(\d)/, "$1.$2"); // Exemplo: 112.345
-      valor = valor.replace(/(\d{3})(\d)/, "$1.$2"); // Exemplo: 112.345.678
-      valor = valor.replace(/(\d{3})(\d)/, "$1/$2"); // Exemplo: 112.345.678/0001
-      valor = valor.replace(/(\d{4})(\d{1,2})$/, "$1-$2"); // Exemplo: 112.345.678/0001-23
-    } else if (valor.length > 14) {
-      // Adaptar CNPJs maiores que 14 dígitos
-      valor = valor.replace(/(\d{3})(\d)/, "$1.$2"); // Exemplo: 123.456
-      valor = valor.replace(/(\d{3})(\d)/, "$1.$2"); // Exemplo: 123.456.789
-      valor = valor.replace(/(\d{3})(\d)/, "$1/$2"); // Exemplo: 123.456.789/0012
-      valor = valor.replace(/(\d{4})(\d{2})$/, "$1-$2"); // Exemplo: 123.456.789/0012-34
+    } else if (valor.length <= 14) {
+      // CNPJ: 00.000.000/0000-00
+      valor = valor.replace(/^(\d{2})(\d)/, "$1.$2");
+      valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+      valor = valor.replace(/\.(\d{3})(\d)/, ".$1/$2");
+      valor = valor.replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+    } else {
+      // Caso venha maior que 14 (fallback flexível)
+      valor = valor.replace(/^(\d{2})(\d)/, "$1.$2");
+      valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+      valor = valor.replace(/\.(\d{3})(\d)/, ".$1/$2");
+      valor = valor.replace(/(\d{4})(\d{2})$/, "$1-$2");
     }
 
     input.value = valor; // Atualiza o valor do campo
@@ -1369,6 +1519,7 @@ content %}
 </script>
 
 <script>
+  /*
   const selectEstado = document.getElementById("estado");
   const selectCidade = document.getElementById("cidade");
 
@@ -1482,6 +1633,7 @@ content %}
       { value: "Barra do Ribeiro", text: "Barra do Ribeiro" },
       { value: "Eldorado do Sul", text: "Eldorado do Sul" },
       { value: "Sapucaia do Sul", text: "Sapucaia do Sul" },
+      { value: "Cachoeirinha", text: "Cachoeirinha" },
     ],
 
     PR: [
@@ -1534,7 +1686,7 @@ content %}
         selectCidade.appendChild(newOption);
       });
     }
-  });
+  });*/
 </script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
@@ -1554,7 +1706,7 @@ content %}
 
     if (rua || numero || complemento) {
       const enderecoFormatado = `${limpar(rua)} Nº ${limpar(numero)} ${limpar(
-        complemento
+        complemento,
       )}`;
       document.getElementById("endereco").value = enderecoFormatado;
     }

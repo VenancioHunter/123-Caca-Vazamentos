@@ -1,0 +1,859 @@
+{% extends "layout.html" %}
+
+{% block title %}Desempenho dos Atendentes{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --panel-gradient: linear-gradient(135deg, #0d5590 0%, #1f7fa7 48%, #6fc7cf 100%);
+    --surface: #ffffff;
+    --surface-soft: #f4f8fc;
+    --border-soft: rgba(15, 83, 122, 0.12);
+    --text-strong: #17354b;
+    --text-soft: #667a8b;
+    --shadow-soft: 0 22px 54px rgba(19, 56, 88, 0.1);
+    --success-soft: #e7f7ef;
+    --warning-soft: #fff4d9;
+    --info-soft: #e8f2ff;
+  }
+
+  .performance-shell {
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+
+  .hero-panel {
+    position: relative;
+    overflow: hidden;
+    border-radius: 30px;
+    background: var(--panel-gradient);
+    color: #fff;
+    box-shadow: 0 28px 70px rgba(13, 85, 144, 0.18);
+  }
+
+  .hero-panel::before,
+  .hero-panel::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .hero-panel::before {
+    width: 220px;
+    height: 220px;
+    top: -70px;
+    right: -50px;
+  }
+
+  .hero-panel::after {
+    width: 170px;
+    height: 170px;
+    left: -30px;
+    bottom: -60px;
+  }
+
+  .hero-layer {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .hero-title {
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.05;
+    font-weight: 800;
+    margin: 18px 0 12px;
+  }
+
+  .hero-copy {
+    margin: 0;
+    max-width: 660px;
+    color: rgba(255, 255, 255, 0.88);
+  }
+
+  .filter-card {
+    border-radius: 24px;
+    padding: 22px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+  }
+
+  .filter-card label {
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .filter-card .form-select,
+  .filter-card .btn {
+    min-height: 50px;
+    border-radius: 16px;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .filter-card .form-select {
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--text-strong);
+  }
+
+  .filter-card .btn {
+    background: #fff;
+    color: #0d5590;
+    font-weight: 700;
+  }
+
+  .filter-actions {
+    display: grid;
+    gap: 10px;
+  }
+
+  .stats-grid {
+    margin-top: -34px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .stat-card {
+    height: 100%;
+    border: 1px solid var(--border-soft);
+    border-radius: 22px;
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .stat-label {
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
+  .stat-value {
+    color: var(--text-strong);
+    font-size: 2rem;
+    line-height: 1;
+    font-weight: 800;
+    margin-top: 10px;
+  }
+
+  .stat-note {
+    color: var(--text-soft);
+    margin-top: 10px;
+    font-size: 0.92rem;
+  }
+
+  .stat-card.success {
+    background: linear-gradient(180deg, #ffffff 0%, #f1fbf5 100%);
+  }
+
+  .stat-card.warning {
+    background: linear-gradient(180deg, #ffffff 0%, #fffaf0 100%);
+  }
+
+  .section-block {
+    margin-top: 42px;
+  }
+
+  .section-title {
+    color: var(--text-strong);
+    font-size: 1.45rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  .section-copy {
+    color: var(--text-soft);
+    margin-bottom: 0;
+  }
+
+  .attendant-grid {
+    display: grid;
+    gap: 24px;
+    margin-top: 22px;
+  }
+
+  .attendant-panel {
+    border: 1px solid var(--border-soft);
+    border-radius: 26px;
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+  }
+
+  .attendant-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--border-soft);
+    background:
+      radial-gradient(circle at top right, rgba(111, 199, 207, 0.16), transparent 34%),
+      linear-gradient(180deg, #fbfdff 0%, #f4f9fd 100%);
+  }
+
+  .attendant-name {
+    color: var(--text-strong);
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin: 0;
+  }
+
+  .attendant-meta {
+    color: var(--text-soft);
+    margin-top: 8px;
+  }
+
+  .pill-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    margin: 8px 10px 0 0;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+    background: #fff;
+    color: var(--text-strong);
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  .pill-stat strong {
+    font-size: 1rem;
+  }
+
+  .attendant-body {
+    padding: 24px;
+  }
+
+  .chart-panel {
+    padding: 18px;
+    border-radius: 22px;
+    background: var(--surface-soft);
+    border: 1px solid rgba(20, 55, 90, 0.08);
+    margin-bottom: 20px;
+  }
+
+  .chart-panel h4 {
+    color: var(--text-strong);
+    font-size: 1rem;
+    font-weight: 800;
+    margin-bottom: 14px;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 320px;
+    width: 100%;
+  }
+
+  .chart-wrap canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .table-responsive {
+    border: 1px solid rgba(20, 55, 90, 0.08);
+    border-radius: 20px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .performance-table {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  .performance-table thead th {
+    background: #f4f8fc;
+    color: var(--text-strong);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border-soft);
+    padding: 12px 10px;
+    white-space: normal;
+    line-height: 1.2;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .performance-table tbody td {
+    padding: 12px 10px;
+    vertical-align: middle;
+    color: var(--text-strong);
+    border-color: rgba(20, 55, 90, 0.08);
+    text-align: center;
+  }
+
+  .performance-table tbody tr:hover {
+    background: #f9fcff;
+  }
+
+  .metric-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.78rem;
+  }
+
+  .channel-head {
+    display: block;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  .channel-sub {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.68rem;
+    color: var(--text-soft);
+    font-weight: 700;
+  }
+
+  .metric-badge.day {
+    background: var(--info-soft);
+    color: #1d5d99;
+  }
+
+  .metric-badge.total {
+    background: #eef3f8;
+    color: #586c7e;
+  }
+
+  .metric-badge.agendados {
+    background: var(--success-soft);
+    color: #17744b;
+  }
+
+  .metric-badge.aguardando {
+    background: var(--warning-soft);
+    color: #9b6a00;
+  }
+
+  .empty-state {
+    margin-top: 22px;
+    padding: 46px 28px;
+    text-align: center;
+    border: 1px dashed rgba(13, 85, 144, 0.24);
+    border-radius: 28px;
+    background: linear-gradient(180deg, #fbfdff 0%, #f2f8fd 100%);
+    color: var(--text-soft);
+  }
+
+  .empty-state h3 {
+    color: var(--text-strong);
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+
+  @media (max-width: 991px) {
+    .stats-grid {
+      margin-top: 22px;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .hero-panel,
+    .attendant-panel,
+    .empty-state {
+      border-radius: 24px;
+    }
+
+    .filter-card,
+    .attendant-header,
+    .attendant-body {
+      padding: 18px;
+    }
+  }
+</style>
+
+<div class="performance-shell py-4">
+  <section class="hero-panel p-4 p-lg-5">
+    <div class="row g-4 align-items-end hero-layer">
+      <div class="col-lg-7">
+        <span class="hero-pill">Admin · Atendimento</span>
+        <h1 class="hero-title">Desempenho por Atendente</h1>
+        <p class="hero-copy">
+          Visualize um painel por atendente ou filtre um profissional específico.
+          A tabela mostra os resultados diários do mês e o gráfico em linha destaca
+          a evolução dos percentuais de agendados e aguardando.
+        </p>
+      </div>
+      <div class="col-lg-5">
+        <form method="post" class="filter-card">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="selected_month">Mês</label>
+              <select
+                id="selected_month"
+                name="selected_month"
+                class="form-select"
+              >
+                {% for mes in meses %}
+                <option
+                  value="{{ mes.value }}"
+                  {% if mes.value == selected_month %}selected{% endif %}
+                >
+                  {{ mes.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="selected_year">Ano</label>
+              <select
+                id="selected_year"
+                name="selected_year"
+                class="form-select"
+              >
+                {% for year in years %}
+                <option
+                  value="{{ year }}"
+                  {% if year == selected_year %}selected{% endif %}
+                >
+                  {{ year }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="selected_attendant">Atendente</label>
+              <select
+                id="selected_attendant"
+                name="selected_attendant"
+                class="form-select"
+              >
+                <option value="all" {% if selected_attendant == "all" %}selected{% endif %}>
+                  Todos
+                </option>
+                {% for attendant in attendants_options %}
+                <option
+                  value="{{ attendant.id }}"
+                  {% if attendant.id == selected_attendant %}selected{% endif %}
+                >
+                  {{ attendant.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <div class="filter-actions">
+                <button type="submit" class="btn w-100">Atualizar painel</button>
+                <button
+                  type="button"
+                  class="btn w-100"
+                  onclick="generatePdfReport()"
+                >
+                  Gerar relatório em PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-grid">
+    <div class="row g-3">
+      <div class="col-sm-6 col-xl-3">
+        <article class="stat-card p-4">
+          <div class="stat-label">Período</div>
+          <div class="stat-value">{{ selected_month_name }}</div>
+          <div class="stat-note">{{ selected_year }}</div>
+        </article>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <article class="stat-card p-4">
+          <div class="stat-label">Atendentes</div>
+          <div class="stat-value">{{ total_atendentes }}</div>
+          <div class="stat-note">Exibidos no painel atual</div>
+        </article>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <article class="stat-card success p-4">
+          <div class="stat-label">Agendados</div>
+          <div class="stat-value">{{ total_agendados }}</div>
+          <div class="stat-note">Registros com status agendado</div>
+        </article>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <article class="stat-card warning p-4">
+          <div class="stat-label">Aguardando</div>
+          <div class="stat-value">{{ total_aguardando }}</div>
+          <div class="stat-note">Registros ainda aguardando</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block">
+    <h2 class="section-title">Resultados diários</h2>
+    <p class="section-copy">
+      Cada tabela abaixo representa um atendente. Quando um atendente é selecionado
+      no filtro, apenas o painel dele é exibido.
+    </p>
+
+    {% if grouped_tables %}
+    <div class="attendant-grid">
+      {% for table in grouped_tables %}
+      <article class="attendant-panel">
+        <div class="attendant-header">
+          <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+            <div>
+              <h3 class="attendant-name">{{ table.attendant_name }}</h3>
+              <p class="attendant-meta">
+                {{ table.rows|length }} dia(s) com registros em {{ selected_month_name }}/{{ selected_year }}
+              </p>
+            </div>
+            <div class="d-flex flex-wrap align-items-start justify-content-lg-end">
+              <div class="pill-stat">Total <strong>{{ table.total_atendimentos }}</strong></div>
+              <div class="pill-stat">Agendados <strong>{{ table.total_agendados }}</strong></div>
+              <div class="pill-stat">Aguardando <strong>{{ table.total_aguardando }}</strong></div>
+              <div class="pill-stat">% Agendados <strong>{{ table.percent_agendados }}%</strong></div>
+              <div class="pill-stat">% Aguardando <strong>{{ table.percent_aguardando }}%</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="attendant-body">
+          <div class="chart-panel">
+            <h4>Evolução diária dos percentuais</h4>
+            <div class="chart-wrap">
+              <canvas
+                id="chart-{{ loop.index }}"
+                class="attendance-line-chart"
+                data-chart='{{ {
+                  "labels": table.chart_labels,
+                  "agendados": table.chart_agendados,
+                  "aguardando": table.chart_aguardando,
+                  "title": table.attendant_name
+                } | tojson }}'
+              ></canvas>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table performance-table align-middle">
+              <thead>
+                <tr>
+                  <th>Dia do mês</th>
+                  <th>Total de atendimentos</th>
+                  {% for channel in channel_columns %}
+                  <th>
+                    <span class="channel-head">{{ channel }}</span>
+                    <span class="channel-sub">Agu.</span>
+                  </th>
+                  {% endfor %}
+                  <th>Aguardando</th>
+                  <th>% Aguardando</th>
+                  {% for channel in channel_columns %}
+                  <th>
+                    <span class="channel-head">{{ channel }}</span>
+                    <span class="channel-sub">Ag.</span>
+                  </th>
+                  {% endfor %}
+                  <th>Agendados</th>
+                  <th>% Agendados</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in table.rows %}
+                <tr>
+                  <td><span class="metric-badge day">{{ row.day }}</span></td>
+                  <td><span class="metric-badge total">{{ row.total }}</span></td>
+                  {% for channel in channel_columns %}
+                  <td>{{ row.channels_aguardando.get(channel, 0) }}</td>
+                  {% endfor %}
+                  <td><span class="metric-badge aguardando">{{ row.aguardando }}</span></td>
+                  <td>{{ row.percent_aguardando }}%</td>
+                  {% for channel in channel_columns %}
+                  <td>{{ row.channels_agendados.get(channel, 0) }}</td>
+                  {% endfor %}
+                  <td><span class="metric-badge agendados">{{ row.agendados }}</span></td>
+                  <td>{{ row.percent_agendados }}%</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h3>Nenhum atendimento encontrado</h3>
+      <p>Não há registros em <code>attendance_records</code> para o período ou atendente selecionado.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const chartNodes = document.querySelectorAll(".attendance-line-chart");
+    window.attendanceCharts = {};
+
+    if (window.ChartDataLabels) {
+      Chart.register(ChartDataLabels);
+    }
+
+    chartNodes.forEach((node) => {
+      const rawData = node.dataset.chart;
+      if (!rawData) return;
+
+      const chartData = JSON.parse(rawData);
+
+      const chartInstance = new Chart(node, {
+        type: "line",
+        data: {
+          labels: chartData.labels,
+          datasets: [
+            {
+              label: "Agendados",
+              data: chartData.agendados,
+              borderColor: "#1b8a5a",
+              backgroundColor: "rgba(27, 138, 90, 0.12)",
+              tension: 0.28,
+              fill: false,
+              borderWidth: 3,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              datalabels: {
+                align: "top",
+                anchor: "end",
+                color: "#1b8a5a",
+                font: {
+                  weight: "700",
+                  size: 11,
+                },
+                formatter: (value) => value,
+              },
+            },
+            {
+              label: "Aguardando",
+              data: chartData.aguardando,
+              borderColor: "#d08a00",
+              backgroundColor: "rgba(208, 138, 0, 0.12)",
+              tension: 0.28,
+              fill: false,
+              borderWidth: 3,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              datalabels: {
+                align: "bottom",
+                anchor: "end",
+                color: "#b67600",
+                font: {
+                  weight: "700",
+                  size: 11,
+                },
+                formatter: (value) => value,
+              },
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const index = context.dataIndex;
+                  if (context.dataset.label === "Agendados") {
+                    return `Agendados: ${context.raw} (${chartData.percent_agendados[index]}%)`;
+                  }
+                  return `Aguardando: ${context.raw} (${chartData.percent_aguardando[index]}%)`;
+                },
+              },
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0,
+              },
+            },
+          },
+        },
+      });
+
+      window.attendanceCharts[node.id] = chartInstance;
+    });
+  });
+
+  function generatePdfReport() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 14;
+    const contentWidth = pageWidth - marginX * 2;
+
+    const selectedMonth = document.getElementById("selected_month");
+    const selectedYear = document.getElementById("selected_year");
+    const selectedAttendant = document.getElementById("selected_attendant");
+    const monthLabel =
+      selectedMonth.options[selectedMonth.selectedIndex]?.text || "";
+    const yearLabel = selectedYear.value || "";
+    const attendantLabel =
+      selectedAttendant.options[selectedAttendant.selectedIndex]?.text || "Todos";
+
+    const statCards = document.querySelectorAll(".stats-grid .stat-card");
+    const stats = Array.from(statCards).map((card) => ({
+      label: card.querySelector(".stat-label")?.innerText?.trim() || "",
+      value: card.querySelector(".stat-value")?.innerText?.trim() || "",
+      note: card.querySelector(".stat-note")?.innerText?.trim() || "",
+    }));
+    const generatedAt = new Date().toLocaleString("pt-BR");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("Relatório de Desempenho dos Atendentes", marginX, 16);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(
+      `Período: ${monthLabel}/${yearLabel}  |  Atendente: ${attendantLabel}`,
+      marginX,
+      23
+    );
+    doc.text(`Gerado em: ${generatedAt}`, marginX, 29);
+
+    if (stats.length) {
+      doc.autoTable({
+        startY: 34,
+        head: [["Indicador", "Valor", "Observação"]],
+        body: stats.map((item) => [item.label, item.value, item.note]),
+        theme: "grid",
+        styles: { fontSize: 8, cellPadding: 2.5 },
+        headStyles: { fillColor: [13, 85, 144] },
+        margin: { left: marginX, right: marginX },
+      });
+    }
+
+    const panels = document.querySelectorAll(".attendant-panel");
+    if (!panels.length) {
+      doc.save(
+        `desempenho-atendentes-${yearLabel}-${selectedMonth.value || "mes"}.pdf`
+      );
+      return;
+    }
+
+    panels.forEach((panel, index) => {
+      if (index === 0) {
+        doc.addPage("a4", "landscape");
+      } else {
+        doc.addPage("a4", "landscape");
+      }
+
+      const attendantName =
+        panel.querySelector(".attendant-name")?.innerText?.trim() || "Atendente";
+      const attendantMeta =
+        panel.querySelector(".attendant-meta")?.innerText?.trim() || "";
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(attendantName, marginX, 18);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(attendantMeta, marginX, 24);
+      doc.text(
+        `Período: ${monthLabel}/${yearLabel}`,
+        pageWidth - marginX,
+        18,
+        { align: "right" }
+      );
+
+      const pillStats = Array.from(panel.querySelectorAll(".pill-stat")).map(
+        (item) => item.innerText.replace(/\s+/g, " ").trim()
+      );
+
+      if (pillStats.length) {
+        doc.autoTable({
+          startY: 28,
+          head: [["Resumo do Atendente"]],
+          body: pillStats.map((item) => [item]),
+          theme: "grid",
+          styles: { fontSize: 8, cellPadding: 2.5 },
+          headStyles: { fillColor: [31, 127, 167] },
+          margin: { left: marginX, right: marginX },
+        });
+      }
+
+      const chartCanvas = panel.querySelector(".attendance-line-chart");
+      let nextY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 6 : 34;
+
+      if (chartCanvas && window.attendanceCharts?.[chartCanvas.id]) {
+        const chartImage = window.attendanceCharts[chartCanvas.id].toBase64Image(
+          "image/png",
+          1
+        );
+        const chartHeight = 62;
+        doc.addImage(chartImage, "PNG", marginX, nextY, contentWidth, chartHeight);
+        nextY += chartHeight + 6;
+      }
+
+      const table = panel.querySelector(".performance-table");
+      if (table) {
+        const headers = Array.from(table.querySelectorAll("thead th")).map((th) =>
+          th.innerText.replace(/\s+/g, " ").trim()
+        );
+        const rows = Array.from(table.querySelectorAll("tbody tr")).map((tr) =>
+          Array.from(tr.querySelectorAll("td")).map((td) =>
+            td.innerText.replace(/\s+/g, " ").trim()
+          )
+        );
+
+        doc.autoTable({
+          startY: nextY,
+          head: [headers],
+          body: rows,
+          theme: "grid",
+          styles: { fontSize: 6.5, cellPadding: 1.6, overflow: "linebreak" },
+          headStyles: { fillColor: [13, 85, 144] },
+          margin: { left: 8, right: 8, bottom: 10 },
+          tableWidth: "auto",
+        });
+      }
+    });
+
+    doc.save(
+      `desempenho-atendentes-${yearLabel}-${selectedMonth.value || "mes"}.pdf`
+    );
+  }
+</script>
+{% endblock %}

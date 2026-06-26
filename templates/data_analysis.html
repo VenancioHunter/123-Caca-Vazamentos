@@ -105,6 +105,181 @@ content %}
     font-size: 22px;
     cursor: pointer;
   }
+  :root {
+    --bg: #f6f8fb;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e6eaf0;
+    --brand: #0d5590;
+    --brand-2: #0b6fb8;
+    --shadow: 0 10px 24px rgba(2, 6, 23, 0.06);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  /* Container geral onde você coloca coluna1 */
+  #coluna1 {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* Card do topo (Total Geral) */
+  .kpi-card {
+    position: sticky;
+    top: 10px;
+    z-index: 5;
+    background: linear-gradient(
+      135deg,
+      rgba(13, 85, 144, 0.1),
+      rgba(11, 111, 184, 0.06)
+    );
+    border: 1px solid rgba(13, 85, 144, 0.18);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(6px);
+  }
+
+  .kpi-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0;
+    font-weight: 900;
+    letter-spacing: 0.2px;
+  }
+
+  .kpi-sub {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  /* Badges (números) */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  .badge--os {
+    border-color: rgba(13, 85, 144, 0.25);
+    color: var(--brand);
+  }
+  .badge--money {
+    border-color: rgba(11, 111, 184, 0.22);
+    color: #0b5391;
+  }
+
+  /* Seções por cidade */
+  .city-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 14px 10px;
+    box-shadow: 0 10px 22px rgba(2, 6, 23, 0.04);
+  }
+
+  .city-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .city-name {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 900;
+    letter-spacing: 0.2px;
+  }
+
+  .city-meta {
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+
+  /* Blocos de dia */
+  .day-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 12px 10px;
+    background: #fff;
+    margin-bottom: 10px;
+  }
+
+  .day-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .day-date {
+    font-weight: 900;
+    color: var(--text);
+  }
+
+  .day-badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Lista de OS */
+  .os-list {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--text);
+  }
+
+  .os-item {
+    margin: 8px 0;
+    line-height: 1.25rem;
+  }
+
+  .os-line-1 {
+    font-weight: 800;
+  }
+
+  .os-line-2 {
+    color: var(--muted);
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  /* Melhor legibilidade em telas pequenas */
+  @media (max-width: 576px) {
+    .kpi-card {
+      top: 8px;
+      padding: 12px;
+    }
+    .city-name {
+      font-size: 1.15rem;
+    }
+    .badge {
+      font-size: 0.86rem;
+      padding: 6px 9px;
+    }
+  }
 </style>
 
 <div>
@@ -141,17 +316,45 @@ content %}
 
     <div class="container-colunas">
       <div class="coluna" id="coluna1"></div>
-      <div class="coluna" id="coluna2"></div>
-    </div>
-
-    <!-- Modal -->
-    <div id="modal" class="modal">
-      <div class="modal-content">
-        <span id="closeModal" class="close">&times;</span>
-        <div id="modalBody"></div>
-      </div>
     </div>
   </div>
+
+  <!-- Overlay para bloquear a tela de fundo -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Pop-up -->
+  <div class="popup" id="popup" align="center">
+    <div class="spinner-border" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div>
+      <span>Aguarde...</span>
+    </div>
+  </div>
+
+  <script>
+    function mostrarPopup() {
+      var overlay = document.getElementById("overlay");
+      var popup = document.getElementById("popup");
+
+      overlay.style.display = "block";
+      popup.style.display = "block";
+
+      // Bloqueia a interação com a tela de fundo
+      overlay.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    }
+
+    function fecharPopup() {
+      var overlay = document.getElementById("overlay");
+      var popup = document.getElementById("popup");
+
+      overlay.style.display = "none";
+      popup.style.display = "none";
+    }
+  </script>
 
   <script>
     // --- 🔹 Busca e exibe lista de cidades ---
@@ -181,8 +384,8 @@ content %}
             const div = document.createElement("div");
             div.innerHTML = `
             <label>
-              <input type="checkbox" class="cidade" data-uf="${uf}" value="${nome}">
-              ${nome}
+              <input type="checkbox" class="cidade" data-uf="${uf}" value="${id}">
+              ${id}
             </label>
           `;
             grid.appendChild(div);
@@ -223,7 +426,7 @@ content %}
     // --- 🔹 Botão "Analisar" ---
     document.getElementById("analyzeButton").addEventListener("click", () => {
       const cidadesSelecionadas = Array.from(
-        document.querySelectorAll(".cidade:checked")
+        document.querySelectorAll(".cidade:checked"),
       ).map((el) => el.value);
 
       const dataInicio = document.getElementById("myDateInputInicio")?.value;
@@ -232,7 +435,7 @@ content %}
       if (!cidadesSelecionadas.length)
         return alert("Selecione pelo menos uma cidade.");
       if (!dataInicio || !dataFim) return alert("Informe o período de datas.");
-
+      mostrarPopup();
       fetch("/buscar_dados", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -246,6 +449,7 @@ content %}
         .then((dados) => {
           console.log("✅ Dados do Firebase:", dados);
           renderResultados(dados);
+          fecharPopup();
         });
     });
 
@@ -254,40 +458,131 @@ content %}
       const coluna1 = document.getElementById("coluna1");
       coluna1.innerHTML = "";
 
-      let totalGeral = 0;
+      let totalGeralOS = 0;
+      let totalGeralR$ = 0;
 
-      for (const cidade in dados) {
-        let totalCidade = 0;
-        const cidadeDiv = document.createElement("div");
-        cidadeDiv.classList.add("cidade");
-        cidadeDiv.innerHTML = `<h3>${cidade}</h3>`;
+      // helper: normaliza newprice (string pt-BR / número em centavos)
+      const normalizarValor = (v) => {
+        if (v == null) return 0;
 
-        const listaDias = document.createElement("ul");
-
-        for (const dia in dados[cidade]) {
-          const osDoDia = Object.values(dados[cidade][dia]);
-          totalCidade += osDoDia.length;
-          totalGeral += osDoDia.length;
-
-          const itemDia = document.createElement("li");
-          itemDia.textContent = `Dia ${dia} → Total ${osDoDia.length} OSs`;
-          listaDias.appendChild(itemDia);
+        if (typeof v === "string") {
+          v = v.replace(/\./g, "").replace(",", ".");
+          v = Number(v);
         }
 
-        const totalDiv = document.createElement("p");
-        totalDiv.innerHTML = `<strong>Total em ${cidade}: ${totalCidade} OSs</strong>`;
-        cidadeDiv.appendChild(totalDiv);
-        cidadeDiv.appendChild(listaDias);
+        if (typeof v === "number" && v >= 1000) {
+          // se vier em centavos
+          v = v / 100;
+        }
 
-        cidadeDiv.addEventListener("click", () =>
-          abrirModal(cidade, dados[cidade])
-        );
-        coluna1.appendChild(cidadeDiv);
+        return Number.isFinite(v) ? v : 0;
+      };
+
+      // Card do topo (Total Geral)
+      const kpi = document.createElement("div");
+      kpi.className = "kpi-card";
+      kpi.innerHTML = `
+    <h2 class="kpi-title">
+      <span>Total Geral</span>
+      <span class="day-badges">
+        <span class="badge badge--os">0 OSs</span>
+        <span class="badge badge--money">R$ 0,00</span>
+      </span>
+    </h2>
+    <p class="kpi-sub">Resumo do período selecionado</p>
+  `;
+      coluna1.appendChild(kpi);
+
+      const kpiBadges = kpi.querySelectorAll(".badge");
+      const badgeOS = kpiBadges[0];
+      const badgeMoney = kpiBadges[1];
+
+      for (const cidade in dados) {
+        let totalCidadeOS = 0;
+        let totalCidadeR$ = 0;
+
+        const cityCard = document.createElement("section");
+        cityCard.className = "city-card";
+
+        const cityHeader = document.createElement("div");
+        cityHeader.className = "city-header";
+        cityHeader.innerHTML = `
+      <h3 class="city-name">${cidade}</h3>
+      <div class="city-meta"></div>
+    `;
+        cityCard.appendChild(cityHeader);
+
+        // Dias
+        for (const dia in dados[cidade]) {
+          const osDoDia = Object.values(dados[cidade][dia] || {});
+          const totalDiaOS = osDoDia.length;
+          const totalDiaR$ = osDoDia.reduce(
+            (acc, os) => acc + normalizarValor(os?.newprice),
+            0,
+          );
+
+          totalCidadeOS += totalDiaOS;
+          totalCidadeR$ += totalDiaR$;
+
+          totalGeralOS += totalDiaOS;
+          totalGeralR$ += totalDiaR$;
+
+          const dayCard = document.createElement("div");
+          dayCard.className = "day-card";
+
+          const dayHeader = document.createElement("div");
+          dayHeader.className = "day-header";
+          dayHeader.innerHTML = `
+        <div class="day-date">${dia}</div>
+        <div class="day-badges">
+          <span class="badge badge--os">${totalDiaOS} OSs</span>
+          <span class="badge badge--money">R$ ${totalDiaR$.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>
+      `;
+          dayCard.appendChild(dayHeader);
+
+          const ul = document.createElement("ul");
+          ul.className = "os-list";
+
+          osDoDia.forEach((os) => {
+            const valor = normalizarValor(os?.newprice);
+            const valorFmt = valor.toLocaleString("pt-BR", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+
+            const li = document.createElement("li");
+            li.className = "os-item";
+            li.innerHTML = `
+          <div class="os-line-1">OS ${os?.numero_os ?? "-"} — ${os?.service ?? "-"} (R$ ${valorFmt})</div>
+          <div class="os-line-2">Cliente: ${os?.name ?? "-"} | ${os?.phone ?? "-"}</div>
+        `;
+            ul.appendChild(li);
+          });
+
+          dayCard.appendChild(ul);
+          cityCard.appendChild(dayCard);
+        }
+
+        // meta da cidade (totais)
+        const cityMeta = cityCard.querySelector(".city-meta");
+        cityMeta.textContent = `${totalCidadeOS} OSs • R$ ${totalCidadeR$.toLocaleString(
+          "pt-BR",
+          {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          },
+        )}`;
+
+        coluna1.appendChild(cityCard);
       }
 
-      const totalGeralDiv = document.createElement("h2");
-      totalGeralDiv.textContent = `Total Geral: ${totalGeral} OSs`;
-      coluna1.prepend(totalGeralDiv);
+      // Atualiza KPIs do topo
+      badgeOS.textContent = `${totalGeralOS} OSs`;
+      badgeMoney.textContent = `R$ ${totalGeralR$.toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
     }
 
     // --- 🔹 Modal para exibir detalhes ---

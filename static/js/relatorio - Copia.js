@@ -8,7 +8,8 @@ function validarCamposObrigatorios() {
         "cidade",
         "estado",
         "tecnico",
-        "data"
+        "data",
+        "selectTecnico"
     ];
 
     // Lista de mensagens de erro para campos vazios
@@ -31,18 +32,62 @@ function validarCamposObrigatorios() {
     return true; // Todos os campos estão preenchidos
 }
 
+// =============================
+// FUNÇÃO PARA GERAR ASSINATURA MANUSCRITA
+// =============================
+function gerarAssinatura(nome) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 400;
+  canvas.height = 100;
+  const ctx = canvas.getContext("2d");
+
+  // Fundo branco
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Fonte cursiva em azul Bic
+  ctx.font = "italic 38px 'Great Vibes', cursive";
+  ctx.fillStyle = "#0d47a1"; // azul de caneta Bic
+  ctx.fillText(nome, 10, 60);
+
+  return canvas.toDataURL("image/png");
+}
+
+window.telefoneCidadeSelecionada = null;
 
 async function gerarPDF() {
+    // Impede múltiplos cliques
+    const btn = document.getElementById("btnGerarPDF");
+    btn.disabled = true;
+    btn.innerText = "Gerando PDF...";
+
+    document.getElementById("loadingPopup").style.display = "flex";
 
      // Primeiro, valida os campos obrigatórios
     if (!validarCamposObrigatorios()) {
-        return; // Interrompe a geração do PDF se houver campos vazios
+        // Reativa o botão se houver erro
+        btn.disabled = false;
+        btn.innerText = "Baixar como PDF";
+        document.getElementById("loadingPopup").style.display = "none";
+        return;
+    }
+
+    const tecnicoSelect = document.getElementById("tecnico");
+    if (!tecnicoSelect.value || tecnicoSelect.value.trim() === "") {
+        alert("Por favor, selecione um técnico responsável antes de gerar o relatório.");
+        // Reativa o botão
+        btn.disabled = false;
+        btn.innerText = "Baixar como PDF";
+        document.getElementById("loadingPopup").style.display = "none";
+        return;
     }
 
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF();
+    const pdf = new jsPDF({ compress: true });
     let nome;
-    try {
+    let cpf;
+
+    /*try {
         // Definir logo
         const logoURL = "../static/img/logo.png";
         let imgLogo = new Image();
@@ -58,8 +103,99 @@ async function gerarPDF() {
         pdf.addImage(imgLogo, "PNG", 1, 1, 45, 45);
     } catch (error) {
         console.warn("Logo não carregada. Continuando sem logo.");
-    }
+    }*/
+    
+    
+    await adicionarShapeSuperiorPagina();
+    
+    
   // Função para carregar imagens selecionadas no input e retornar um array de DataURLs
+    async function adicionarShapeSuperiorPagina() {
+        try {
+            const shapeTop = new Image();
+            shapeTop.src = "../static/img/shape_superior.png";
+            await new Promise((resolve, reject) => {
+                shapeTop.onload = resolve;
+                shapeTop.onerror = reject;
+            });
+            pdf.addImage(shapeTop, "PNG", 0, 0, 210, 55);
+        } catch (e) {
+            console.warn("Shape superior não carregado:", e);
+        }
+    }
+
+    async function adicionarShapeInferiorPagina() {
+        try {
+            const shapeBottom = new Image();
+            shapeBottom.src = "../static/img/shape_inferior.png";
+            await new Promise((resolve, reject) => {
+                shapeBottom.onload = resolve;
+                shapeBottom.onerror = reject;
+            });
+            pdf.addImage(shapeBottom, "PNG", 0, 285, 210, 17);
+        } catch (e) {
+            console.warn("Shape inferior não carregado:", e);
+        }
+    }
+
+    async function adicionarCabecalhoPagina(telefone) {
+        await adicionarShapeSuperiorPagina();
+        pdf.setFontSize(14);
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("123 Caça Vazamentos", 130, 20);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(10);
+        pdf.text("CNPJ: 41.713.002/0001-05", 130, 25);
+        pdf.text(`Tel: ${telefone}`, 130, 30);
+        pdf.text("E-mail: 123cacavazamentos@gmail.com", 130, 35);
+        pdf.setTextColor(0, 0, 0);
+    }
+
+    async function adicionarRodapePagina(cidade, data) {
+        await adicionarShapeInferiorPagina();
+        pdf.setTextColor(255, 255, 255);
+        if (data) {
+            const [ano, mes, dia] = data.split("-");
+            const dataFormatada = `${dia}/${mes}/${ano}`;
+            pdf.text(`${dataFormatada}, ${cidade}`, 140, 292);
+        }
+        pdf.setTextColor(0, 0, 0);
+    }
+
+    async function escreverTextoPaginado(
+        linhas,
+        posX,
+        posYInicial,
+        telefone,
+        tituloContinuacao = "",
+        limiteInferior = 272,
+        posYNovaPagina = 60,
+        alturaLinha = 6,
+    ) {
+        let posYAtual = posYInicial;
+
+        for (const linha of linhas) {
+            if (posYAtual > limiteInferior) {
+                pdf.addPage();
+                await adicionarCabecalhoPagina(telefone);
+                posYAtual = posYNovaPagina;
+
+                if (tituloContinuacao) {
+                    pdf.setFont("helvetica", "bold");
+                    pdf.text(tituloContinuacao, posX, posYAtual);
+                    pdf.setFont("helvetica", "normal");
+                    posYAtual += alturaLinha + 2;
+                }
+            }
+
+            pdf.text(linha, posX, posYAtual);
+            posYAtual += alturaLinha;
+        }
+
+        return posYAtual;
+    }
+
     const carregarImagensDoInput = async (inputId) => {
         const input = document.getElementById(inputId);
         const files = input.files;
@@ -82,12 +218,12 @@ async function gerarPDF() {
         const imagensDataUrls = await carregarImagensDoInput("imagens");
 
         // Primeira página: conteúdo textual do relatório
-        pdf.setFontSize(16);
-        pdf.text("CLIENTE", 90, 45);
+        /*pdf.setFontSize(16);
+        pdf.text("CLIENTE", 90, 45);*/
 
         // Exemplo de conteúdo da primeira página
         nome = document.getElementById("nome").value;
-        const cpf = document.getElementById("cpf").value;
+        cpf = document.getElementById("cpf").value;
         const endereco = document.getElementById("endereco").value;
         const bairro = document.getElementById("bairro").value;
         const cidade = document.getElementById("cidade").value;
@@ -121,8 +257,13 @@ async function gerarPDF() {
 
         const larguraMaximaLinha = 180; // Ajuste conforme necessário
 
+          // =============================
+        // CABEÇALHO DO CLIENTE
+        // =============================
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(14);
+        pdf.text(`${nome}`, 10, 55);
         pdf.setFontSize(10);
-        pdf.text(`Nome: ${nome}`, 10, 55);
         pdf.text(`CPF/CNPJ: ${cpf}`, 10, 62);
         pdf.text(`Endereço: ${endereco}`, 10, 69);
         pdf.text(`Bairro: ${bairro}`, 10, 76);
@@ -133,136 +274,23 @@ async function gerarPDF() {
         pdf.setFont("helvetica", "normal");
 
 
-        const telefonesMap = {
-            "Maceió": "(82) 92001-4853",
-            "Satuba": "(82) 92001-4853",
-            "Santa Luzia do Norte": "(82) 92001-4853",
-            "Coqueiro Seco": "(82) 92001-4853",
-            "Cadoz": "(82) 92001-4853",
-            "Rio Largo": "(82) 92001-4853",
-            "Marechal Deodoro": "(82) 92001-4853",
-            "Santa Luzia": "(82) 92001-4853",
-            "Pilar": "(82) 92001-4853",
-            "Barra de São Miguel": "(82) 92001-4853",
-            "Atalaia": "(82) 92001-4853",
-            "Murici": "(82) 92001-4853",
-            "Messias": "(82) 92001-4853",
-            "Barra de Santo Antônio": "(82) 92001-4853",
-            "Paripueira": "(82) 92001-4853",
-            "Arapiraca": "(82) 92001-4853",
-
-
-            "Salvador": "(71) 93300-1134",
-            "Camaçari": "(71) 93300-1134",
-            "Feira de Santana": "(75) 93300-2063",
-            "Lauro de Freitas": "(71) 93300-1134",
-            "Simões Filho": "(71) 93300-1134",
-            "Gamboa": "(71) 93300-1134",
-            "Vera Cruz": "(71) 93300-1134",
-            "Itaparica": "(71) 93300-1134",
-            "Mata de São João": "(71) 93300-1134",
-            "Alagoinhas": "(71) 93300-1134",
-            "Madre De Deus": "(71) 93300-1134",
-            "Salinas das Margaridas": "(71) 93300-1134",
-
-
-            "Goiânia": "(62) 93300-6961",
-            "Aparecida de Goiânia": "(62) 93300-6961",
-            "Senador Canedo": "(62) 93300-6961",
-            "Trindade": "(62) 93300-6961",
-            "Anápolis": "(62) 93300-6961",
-            "Goianira": "(62) 93300-6961",
-            "Rio Verde": "(62) 93300-6961",
-            "Bela Vista": "(62) 93300-6961",
-            "Hidrolândia": "(62) 93300-6961",
-            "Nerópolis": "(62) 93300-6961",
-            "Cesarina": "(62) 93300-6961",
-            "Guapó": "(62) 93300-6961",
-            "Aragoiânia": "(62) 93300-6961",
-            "Maripotaba": "(62) 93300-6961",
-            "Palmeiras": "(62) 93300-6961",
-
-            "São Paulo": "(11) 93300-3231",
-            "Osasco": "(11) 93300-3231",
-            "Barueri": "(11) 93300-3231",
-            "Campinas": "(19) 92001-6371",
-            "Itupeva": "(19) 92001-6371",
-            "Franco Da Rocha": "(19) 92001-6371",
-            "Jundiaí": "(19) 92001-6371",
-            "Campo Limpo Paulista": "(19) 92001-6371",
-            "Louveira": "(19) 98563-4600",
-            "Várzea Paulista": "(19) 92001-6371",
-            "Vinhedo": "(19) 92001-6371",
-            "Valinhos": "(19) 92001-6371",
-            "Hortolândia": "(19) 92001-6371",
-            "Paulínia": "(19) 92001-6371",
-            "Itatiba": "(19) 92001-6371",
-            "Indaiatuba": "(19) 92001-6371",
-            "Jaguariúna": "(19) 92001-6371",
-            "Sumaré": "(11) 93300-3231",
-            "Diadema": "(11) 93300-3231",
-            "Santo André": "(11) 93300-3231",
-            "São Bernardo do Campo": "(11) 93300-3231",
-            "São Caetano do Sul": "(19) 92001-6371",
-            "Mauá": "(19) 92001-6371",
-            "Jaguariúna": "(19) 92001-6371",
-            "Nova Odessa": "(19) 92001-6371",
-            "Americana": "(19) 92001-6371",
-            "Atibaia": "(19) 92001-6371",
-            "Guarulhos": "(11) 93300-3231",
-            "Poa": "(11) 93300-3231",
-            "Mogi das Cruzes": "(11) 93300-3231",
-            "Itaquacetuba": "(11) 93300-3231",
-            "Cajamar": "(19) 92001-6371",
-            "Amparo": "(19) 92001-6371",
-            "Capivari": "(19) 92001-6371",
-            "Limeira": "(19) 92001-6371",
-            "Sorocaba": "(11) 92015-4693",
-
-            "Florianópolis": "(48) 93300-4291",
-            "São José": "(48) 93300-4291",
-            "Palhoça": "(48) 93300-4291",
-            "Biguaçu": "(48) 93300-4291",
-
-            "Porto Alegre": "(51) 92001-5474",
-            "Canoas": "(51) 92001-5474",
-            "Glorinha": "(51) 92001-5474",
-            "Guaíba": "(51) 92001-5474",
-            "Gravataí": "(51) 92001-5474",
-            "Novo Hamburgo": "(51) 92001-5474",
-            "Viamão": "(51) 92001-5474",
-            "Esteio": "(51) 92001-5474",
-            "Alvorada": "(51) 92001-5474",
-            "São Leopoldo": "(51) 92001-5474",
-            "Barra do Ribeiro": "(51) 92001-5474",
-            "Eldorado do Sul": "(51) 92001-5474",
-            
-            "Curitiba": "(41) 92001-6421",
-            "São José dos Pinhais": "(41) 92001-6421",
-            "Pinhais": "(41) 92001-6421",
-            "Araucária": "(41) 92001-6421",
-            "Colombo": "(41) 92001-6421",
-            "Campo Largo": "(41) 92001-6421",
-            "Almirante Tamandaré": "(41) 92001-6421",
-
-            "Belo Horizonte": "(31) 93300-6395",
-            "Contagem": "(31) 93300-6395",
-            "Betim": "(31) 93300-6395",
-            "Sabará": "(31) 93300-6395",
-            "Nova Lima": "(31) 93300-6395",
-            "Santa Luzia": "(31) 93300-6395",
-            "Ibirité": "(31) 93300-6395",
-            "Itabirito": "(31) 93300-6395",
-        };
-
-        const telefone = telefonesMap[cidade] || "Telefone não disponível";
+        const telefone = window.telefoneCidadeSelecionada || "Telefone não disponível";
         
-        pdf.setFont("helvetica", "bold");
-        pdf.text(`Central Caça Vazamentos`, 150, 20);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(`CNPJ 43.973.146/0001-26`, 150, 25);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(`Tel: ${telefone}`, 150, 30);
+          // =============================
+  // INFORMAÇÕES DA EMPRESA
+  // =============================
+  pdf.setFontSize(14);
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("123 Caça Vazamentos", 130, 20);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+  pdf.text("CNPJ: 41.713.002/0001-05", 130, 25);
+  pdf.text(`Tel: ${telefone}`, 130, 30);
+  pdf.text("E-mail: 123cacavazamentos@gmail.com", 130, 35);
+
+  pdf.setTextColor(0, 0, 0);
+
 
 
         const selectedTechniques = [];
@@ -337,14 +365,16 @@ async function gerarPDF() {
 
             let posicaoY = 150; // Posição inicial Y
             locaisDireita.forEach((local) => {
-                pdf.text( pdf.splitTextToSize(local, larguraLinhaLocalVazamento), 20, posicaoY); // Escreve cada item no PDF
-                posicaoY += 12; // Incrementa a posição Y
+                const linhasLocal = pdf.splitTextToSize(local, larguraLinhaLocalVazamento);
+                pdf.text(linhasLocal, 20, posicaoY); // Escreve cada item no PDF
+                posicaoY += linhasLocal.length * 6 + 2; // Incrementa conforme a altura real
             });
 
             let posicaoYD = 150; // Posição inicial Y
             locaisEsquerda.forEach((local) => {
-                pdf.text(pdf.splitTextToSize(local, larguraLinhaLocalVazamento), 110, posicaoYD); // Escreve cada item no PDF
-                posicaoYD += 12; // Incrementa a posição Y
+                const linhasLocal = pdf.splitTextToSize(local, larguraLinhaLocalVazamento);
+                pdf.text(linhasLocal, 110, posicaoYD); // Escreve cada item no PDF
+                posicaoYD += linhasLocal.length * 6 + 2; // Incrementa conforme a altura real
             });
             verifica_detalhes_existe = true;
         }
@@ -354,16 +384,25 @@ async function gerarPDF() {
         const linhasTextoObservacao = pdf.splitTextToSize(observacao, larguraMaximaLinha);
         
 
+        let fimObservacao = 0;
+
         if (verifica_detalhes_existe == true) {
             pdf.setFont("helvetica", "bold"); 
             pdf.text("Observação:", 10, 220);
             pdf.setFont("helvetica", "normal");
 
             if (observacao.length === 0) {
-            pdf.text(`Nenhuma observação`, 10, 227);
+                pdf.text(`Nenhuma observação`, 10, 227);
+                fimObservacao = 233;
             }
             else {
-                pdf.text(linhasTextoObservacao, 10, 227);
+                fimObservacao = await escreverTextoPaginado(
+                    linhasTextoObservacao,
+                    10,
+                    227,
+                    telefone,
+                    "Observação (continuação):",
+                );
             }
         }
         else {
@@ -372,10 +411,17 @@ async function gerarPDF() {
             pdf.setFont("helvetica", "normal");
 
             if (observacao.length === 0) {
-            pdf.text(`Nenhuma observação`, 10, 147);
+                pdf.text(`Nenhuma observação`, 10, 147);
+                fimObservacao = 153;
             }
             else {
-                pdf.text(linhasTextoObservacao, 10, 147);
+                fimObservacao = await escreverTextoPaginado(
+                    linhasTextoObservacao,
+                    10,
+                    147,
+                    telefone,
+                    "Observação (continuação):",
+                );
             }
         }
         
@@ -416,7 +462,7 @@ async function gerarPDF() {
         const tecnicoNome = tecnicoSelecionado.value; // Nome do técnico
         const tecnicoCNPJ = tecnicoSelecionado.getAttribute('data-cnpj'); // CNPJ do técnico
         const imagemAssinatura = tecnicoSelecionado.getAttribute('data-imagem');
-
+        /*
         if (imagemAssinatura) {
             const imagemAssinaturaURL = `../static/img/${imagemAssinatura}`;
             const imgAssinatura = new Image();
@@ -430,25 +476,24 @@ async function gerarPDF() {
 
             // Adicionar a assinatura no PDF
             pdf.addImage(imgAssinatura, "PNG", 15, 262, 45, 20); // Ajuste as dimensões conforme necessário
+        }*/
+
+        if (fimObservacao > 244) {
+            pdf.addPage();
+            await adicionarCabecalhoPagina(telefone);
         }
+
+        const assinaturaImagem = gerarAssinatura(tecnicoNome);
+        pdf.addImage(assinaturaImagem, "PNG", 24, 266, 45, 20);
         // Adicionar informações do técnico
-        pdf.text(`-----------------------------------`, 15, 280);    
-        pdf.text(`${tecnicoNome}`, 15, 285);
-        pdf.text(`CNPJ ${tecnicoCNPJ}`, 15, 290);
+        pdf.text(`-----------------------------------`, 24, 280);    
+        pdf.text(`${tecnicoNome}`, 24, 285);
+        pdf.text(`CNPJ ${tecnicoCNPJ}`, 24, 290);
 
 
 
         
-        if (data) {
-            // Dividindo a string no formato ISO
-            const [ano, mes, dia] = data.split('-');
-            
-            // Montando a data no formato dd/mm/yyyy
-            const dataFormatada = `${dia}/${mes}/${ano}`;
-            
-            // Inserindo no PDF
-            pdf.text(`${dataFormatada}, ${cidade}`, 140, 285);
-        }
+        await adicionarRodapePagina(cidade, data);
 
         // -----------------------------------------------------------------------------------------------------------
 
@@ -467,19 +512,20 @@ async function gerarPDF() {
             // ||    
             if (possuiVazamento === "sim" && revisarConta === "sim") {
                 pdf.addPage();
+                await adicionarCabecalhoPagina(telefone);
 
-                await logo(pdf);
+                //await logo(pdf);
                 textUM = 'No local identificado não havia evidências superficiais de vazamento, de modo que não havia possibilidade de o cliente identificar a existência do vazamento no local sem os serviços técnicos contratados.'
-                textDois = 'As características acima indicadas podem ensejar a revisão das contas de água e de esgoto junto à Concessionária do Serviço Público de Saneamento Básico, a qual deverá ser instruída com este Laudo Técnico.';
+                textDois = 'As características acima indicadas podem ensejar a revisão das contas de água e de esgoto junto à Concessionária do Serviço Público de Saneamento Básico, a qual deverá ser instruída com este Relatório Técnico.';
                 const P1 = pdf.splitTextToSize(textUM, larguraMaximaLinha);
                 const P2 = pdf.splitTextToSize(textDois, larguraMaximaLinha);
                 pdf.setFont("helvetica", "bold"); 
-                pdf.text("SOLICITAÇÃO", 90, 50);
+                pdf.text("SOLICITAÇÃO", 90, 70);
                 pdf.setFont("helvetica", "normal");
-                pdf.text(P1, 10, 60);
-                pdf.text(P2, 10, 70);
+                pdf.text(P1, 10, 80);
+                pdf.text(P2, 10, 90);
 
-                if (imagemAssinatura) {
+                /*if (imagemAssinatura) {
                     const imagemAssinaturaURL = `../static/img/${imagemAssinatura}`;
                     const imgAssinatura = new Image();
                     imgAssinatura.src = imagemAssinaturaURL;
@@ -496,37 +542,32 @@ async function gerarPDF() {
                 // Adicionar informações do técnico
                 pdf.text(`-----------------------------------`, 15, 280);    
                 pdf.text(`${tecnicoNome}`, 15, 285);
-                pdf.text(`CNPJ ${tecnicoCNPJ}`, 15, 290);
+                pdf.text(`CNPJ ${tecnicoCNPJ}`, 15, 290);*/
 
+                const assinaturaImagem = gerarAssinatura(tecnicoNome);
+                pdf.addImage(assinaturaImagem, "PNG", 24, 266, 45, 20);
+                // Adicionar informações do técnico
+                pdf.text(`-----------------------------------`, 24, 280);    
+                pdf.text(`${tecnicoNome}`, 24, 285);
+                pdf.text(`CNPJ ${tecnicoCNPJ}`, 24, 290);
 
-
-                
-                if (data) {
-                    // Dividindo a string no formato ISO
-                    const [ano, mes, dia] = data.split('-');
-                    
-                    // Montando a data no formato dd/mm/yyyy
-                    const dataFormatada = `${dia}/${mes}/${ano}`;
-                    
-                    // Inserindo no PDF
-                    pdf.text(`${dataFormatada}, ${cidade}`, 140, 285);
-                }
             }
             else if (possuiVazamento === "nao" && revisarConta === "sim") {
                 pdf.addPage();
+                await adicionarCabecalhoPagina(telefone);
 
-                await logo(pdf);
+                //await logo(pdf);
                 textUM = 'Após a inspeção técnica no local, não foram identificadas evidências superficiais ou ocultas de vazamento, de modo que a área analisada não apresentou quaisquer sinais de perda de água ou problemas relacionados.'
                 textDois = 'As características acima indicadas podem ensejar a revisão das contas de água e de esgoto junto à Concessionária do Serviço Público de Saneamento Básico, a qual deverá ser instruída com este Relatório Técnico.';
                 const P1 = pdf.splitTextToSize(textUM, larguraMaximaLinha);
                 const P2 = pdf.splitTextToSize(textDois, larguraMaximaLinha);
                 pdf.setFont("helvetica", "bold"); 
-                pdf.text("SOLICITAÇÃO", 90, 50);
+                pdf.text("SOLICITAÇÃO", 90, 70);
                 pdf.setFont("helvetica", "normal");
-                pdf.text(P1, 10, 60);
-                pdf.text(P2, 10, 70);
+                pdf.text(P1, 10, 80);
+                pdf.text(P2, 10, 90);
 
-                if (imagemAssinatura) {
+                /*if (imagemAssinatura) {
                     const imagemAssinaturaURL = `../static/img/${imagemAssinatura}`;
                     const imgAssinatura = new Image();
                     imgAssinatura.src = imagemAssinaturaURL;
@@ -543,22 +584,18 @@ async function gerarPDF() {
                 // Adicionar informações do técnico
                 pdf.text(`-----------------------------------`, 15, 280);    
                 pdf.text(`${tecnicoNome}`, 15, 285);
-                pdf.text(`CNPJ ${tecnicoCNPJ}`, 15, 290);
+                pdf.text(`CNPJ ${tecnicoCNPJ}`, 15, 290);*/
+
+                const assinaturaImagem = gerarAssinatura(tecnicoNome);
+                pdf.addImage(assinaturaImagem, "PNG", 24, 266, 45, 20);
+                // Adicionar informações do técnico
+                pdf.text(`-----------------------------------`, 24, 280);    
+                pdf.text(`${tecnicoNome}`, 24, 285);
+                pdf.text(`CNPJ ${tecnicoCNPJ}`, 24, 290);
 
 
-
-                
-                if (data) {
-                    // Dividindo a string no formato ISO
-                    const [ano, mes, dia] = data.split('-');
-                    
-                    // Montando a data no formato dd/mm/yyyy
-                    const dataFormatada = `${dia}/${mes}/${ano}`;
-                    
-                    // Inserindo no PDF
-                    pdf.text(`${dataFormatada}, ${cidade}`, 140, 285);
-                }
-            }   
+            }
+            await adicionarRodapePagina(cidade, data);
         };
 
         // ------------------------------------------------------------------------------------------------------------
@@ -580,53 +617,44 @@ async function gerarPDF() {
 
         // Adicionar cada imagem a partir da segunda página
         for (const dataUrl of imagensDataUrls) {
-            // Criar uma instância de imagem
-            const img = new Image();
-            img.src = dataUrl;
+            const imgComprimida = await comprimirImagem(dataUrl, 0.7); // 70% de qualidade (ótimo equilíbrio)
 
-            // Esperar a imagem carregar antes de obter dimensões
+            const img = new Image();
+            img.src = imgComprimida;
             await new Promise((resolve, reject) => {
                 img.onload = resolve;
                 img.onerror = reject;
             });
 
-            // Dimensões reais da imagem
             const imgWidth = img.naturalWidth;
             const imgHeight = img.naturalHeight;
 
-            // Tamanho máximo permitido no PDF
-            const maxWidth = 150; // Largura máxima no PDF
-            const maxHeight = 100; // Altura máxima no PDF
-
-            // Calcular as dimensões proporcionalmente
+            const maxWidth = 150;
+            const maxHeight = 100;
             let width = imgWidth;
             let height = imgHeight;
 
             if (imgWidth > maxWidth || imgHeight > maxHeight) {
                 const widthRatio = maxWidth / imgWidth;
                 const heightRatio = maxHeight / imgHeight;
-                const scale = Math.min(widthRatio, heightRatio); // Usa o menor fator de escala
-
+                const scale = Math.min(widthRatio, heightRatio);
                 width = imgWidth * scale;
                 height = imgHeight * scale;
             }
 
-            // Verificar se há espaço suficiente na página para a próxima imagem
-            if (yPosition + height > 280) { // Limite vertical da página
-                pdf.addPage(); // Cria uma nova página se a imagem não couber
-                yPosition = 22; // Reseta a posição inicial
-                positionAnexo = 20; // Reseta a posição do texto
+            if (yPosition + height > 280) {
+                pdf.addPage();
+                yPosition = 22;
+                positionAnexo = 20;
             }
 
-            // Adicionar texto e imagem ao PDF
             pdf.text(`Imagem: ${countAnexo}`, 10, positionAnexo);
-            pdf.addImage(dataUrl, "PNG", 10, yPosition, width, height);
+            pdf.addImage(imgComprimida, "JPEG", 10, yPosition, width, height);
 
-            // Atualizar posição para a próxima imagem
-            yPosition += height + 10; // Move a posição para a próxima imagem, considerando a altura ajustada
-            positionAnexo = yPosition - 5; // Ajusta a posição do texto da próxima imagem
+            yPosition += height + 10;
+            positionAnexo = yPosition - 5;
             countAnexo += 1;
-        }
+            }
         }
 
     } catch (error) {
@@ -634,8 +662,60 @@ async function gerarPDF() {
     }
 
     // Salvar PDF
+    // Primeiro gera o blob
+    // MOSTRA POP-UP
+document.getElementById("loadingPopup").style.display = "flex";
+/*
+// Primeiro gera o blob antes de salvar
+const pdfBlob = pdf.output("blob");
+
+// Converte para File (compatível com celulares)
+const pdfFile = new File([pdfBlob], `relatorio-${Date.now()}.pdf`, {
+    type: "application/pdf"
+});
+
+
+
+// Monta o formData
+const formData = new FormData();
+formData.append("pdf", pdfFile);
+formData.append("nome", nome);
+formData.append("cpf", cpf);
+
+// Envia para o servidor
+fetch("/upload_pdf", {
+    method: "POST",
+    body: formData
+})
+.then(res => res.json())
+.then(data => {
+    console.log("Upload OK:", data);
+
+    // Depois do upload → baixa o PDF
     pdf.save(`Relatorio_Tecnico_${nome}.pdf`);
+
+    // Depois de tudo → fecha popup e ativa botão
+    setTimeout(() => {
+        document.getElementById("loadingPopup").style.display = "none";
+        btn.disabled = false;
+        btn.innerText = "Baixar como PDF";
+    }, 1200);
+})
+.catch(err => {
+    console.error("Falha no upload:", err);
+    alert("Erro ao enviar o relatório. Verifique sua conexão.");
+
+    // Libera botão e popup mesmo se der erro
+    document.getElementById("loadingPopup").style.display = "none";
+    btn.disabled = false;
+    btn.innerText = "Baixar como PDF";
+});*/
+pdf.save(`Relatorio_Tecnico_${nome}.pdf`);
+document.getElementById("loadingPopup").style.display = "none";
+btn.disabled = false;
+btn.innerText = "Baixar como PDF";
 }
+
 
 
 async function logo(pdf) {
@@ -657,3 +737,19 @@ async function logo(pdf) {
         console.warn("Logo não carregada. Continuando sem logo.");
     }
 }
+
+async function comprimirImagem(dataUrl, qualidade = 0.7) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = dataUrl;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", qualidade)); // converte e comprime
+    };
+  });
+}
+

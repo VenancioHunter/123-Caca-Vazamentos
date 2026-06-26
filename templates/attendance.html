@@ -1,26 +1,19 @@
 <!-- templates/dashboard.html -->
-{% extends "layout.html" %}
-
-{% block title %}Atendimento{% endblock %}
-
-{% block content %}
-<link href="../static/css/dashboard.css" rel="stylesheet">
+{% extends "layout.html" %} {% block title %}Atendimento{% endblock %} {% block
+content %}
+<link href="../static/css/dashboard.css" rel="stylesheet" />
 <div>
-    <div class="row text-center mt-4">
-        <div class="col-sm-12">
-            <div class="border border-0 m-2">
-                <a class="card-presentation" href="{{ url_for('adm_consulta_atendimentos') }}">
-                    <h5>Atend. Por Cidade</h5>
-                </a>
-            </div>
-        </div>
-        <div class="col-sm-12">
-            <div class="border border-0 m-2">
-                <a class="card-presentation" href="{{ url_for('view_all_attendances') }}">
-                    <h5>Todos os Atendimentos</h5>
-                </a>
-            </div>
-        </div>
+  <div class="row text-center mt-4">
+    <div class="col-sm-12">
+      <div class="border border-0 m-2">
+        <a
+          class="card-presentation"
+          href="{{ url_for('view_all_attendances') }}"
+        >
+          <h5>Todos os Atendimentos</h5>
+        </a>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}

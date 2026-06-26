@@ -1,0 +1,354 @@
+{% extends "layout.html" %} {% block title %}Minhas OS’s Pendentes{% endblock %}
+{% block content %}
+
+<style>
+  .os-card-mobile {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: 0.18s ease-in-out;
+    position: relative;
+  }
+
+  .os-card-mobile:active {
+    transform: scale(0.98);
+  }
+
+  /* Estado selecionado */
+  .os-card-mobile.selected {
+    border-color: #0d5590;
+    background: #eaf4ff;
+    box-shadow: 0 4px 14px rgba(13, 85, 144, 0.25);
+  }
+
+  /* Check de seleção */
+  .os-card-mobile .checkmark {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 22px;
+    height: 22px;
+    background: #0d5590;
+    color: white;
+    border-radius: 50%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .os-card-mobile.selected .checkmark {
+    display: flex;
+  }
+
+  .os-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #0d5590;
+    margin-bottom: 4px;
+  }
+
+  .os-info {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 2px;
+  }
+
+  /* Lista lateral */
+  #selecionados {
+    margin-top: 30px;
+    border-radius: 14px;
+    padding: 18px;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  @media (max-width: 480px) {
+    .os-card-mobile {
+      padding: 13px;
+    }
+    .os-info {
+      font-size: 13px;
+    }
+    .os-title {
+      font-size: 16px;
+    }
+  }
+
+  .tag-corrigir {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #dc3545;
+    color: white;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+  }
+
+  .tag-corrigir:active {
+    transform: scale(0.96);
+  }
+
+  .os-card-mobile {
+    position: relative; /* IMPORTANTE para etiqueta ficar colada no card */
+  }
+</style>
+
+<div class="container mt-3">
+  <h3 class="text-center mb-3">OS’s Pendentes</h3>
+
+  <h6 class="text-center text-secondary mb-3">
+    Selecionadas: <strong id="contadorSelecionadas">0</strong>
+  </h6>
+
+  {% if pendentes %} {% for id, p in pendentes.items() %}
+  <div class="os-card-mobile">
+    <div class="checkmark">✔</div>
+    <!-- Etiqueta externa -->
+    <div
+      class="tag-corrigir"
+      data-id-transaction="{{ id }}"
+      data-date-payment="{{ p.date_payment }}"
+    >
+      Corrigir
+    </div>
+
+    <div class="os-title">OS Nº {{ p.numero_os }}</div>
+
+    <!-- Dados ocultos para seleção -->
+    <div
+      class="data-card"
+      data-numero-os="{{ p.numero_os }}"
+      data-id="{{ p.id_os }}"
+      data-id-tecnico="{{ p.tecnico_id }}"
+      data-nome-tecnico="{{ p.tecnico }}"
+      data-date-os="{{ p.date_os }}"
+      data-date-payment="{{ p.date_payment }}"
+      data-id-transaction="{{ id }}"
+      data-cidade="{{ p.city_os }}"
+      data-cliente="{{ p.client }}"
+      data-valor="{{ p.valor_empresa }}"
+    ></div>
+
+    <!-- Cliente -->
+    <div class="os-info"><strong>Cliente:</strong> {{ p.client }}</div>
+    <div class="os-info"><strong>Telefone:</strong> {{ p.client_phone }}</div>
+
+    <!-- Endereço -->
+    <div class="os-info"><strong>Cidade:</strong> {{ p.city_os }}</div>
+
+    <!-- Datas -->
+    <div class="os-info"><strong>Data do Serviço:</strong> {{ p.date_os }}</div>
+    <div class="os-info">
+      <strong>Data Fechamento:</strong> {{ p.horario_fechamento }}
+    </div>
+
+    <!-- Orçamento -->
+    <div class="os-info"><strong>Orçamento:</strong> {{ p.orcamento }}</div>
+
+    <!-- Técnico -->
+    <div class="os-info"><strong>Técnico:</strong> {{ p.tecnico }}</div>
+
+    <!-- Pagamento -->
+    <div class="os-info">
+      <strong>Método de Pagamento:</strong> {{ p.metodo_pagamento }}
+    </div>
+    <div class="os-info"><strong>Taxa:</strong> {{ p.taxa }}</div>
+    <div class="os-info">
+      <strong>Outros Custos:</strong> {{ p.outros_custos_service }}
+    </div>
+
+    <!-- Observação -->
+    {% if p.observacoes_service %}
+    <div class="os-info">
+      <strong>Observação:</strong> {{ p.observacoes_service }}
+    </div>
+    {% endif %}
+
+    <!-- Valores -->
+    <div class="os-info">
+      <strong>Valor Líquido:</strong> R$ {{ p.valor_liquido }}
+    </div>
+    <div class="os-info">
+      <strong>Valor Técnico:</strong> R$ {{ p.valor_tecnico }}
+    </div>
+    <div class="os-info">
+      <strong>Valor Empresa:</strong> R$ {{ p.valor_empresa }}
+    </div>
+
+    <!-- Botão DEVOLVER -->
+    <!--<button
+      class="btn btn-danger btn-devolver mt-2"
+      data-id-transaction="{{ id }}"
+      data-date-payment="{{ p.date_payment }}"
+      style="width: 100%; font-weight: bold"
+    >
+      Corrigir
+    </button>-->
+  </div>
+  {% endfor %} {% else %}
+  <p class="text-center">Nenhuma OS pendente encontrada.</p>
+  {% endif %}
+</div>
+
+<div class="container">
+  <div id="selecionados" class="mt-4">
+    <h5 class="text-center">OS Selecionadas</h5>
+    <ul class="list-group list-group-flush" id="lista-selecionados"></ul>
+
+    <h5 class="mt-3">
+      Total Empresa:
+      <span class="fw-bold">R$ <span id="total-tecnico">0.00</span></span>
+    </h5>
+
+    <button id="btnSalvar" class="btn btn-success mt-3" style="width: 100%">
+      Registrar Pix
+    </button>
+  </div>
+</div>
+
+<!-- Pop-up -->
+<div class="overlay" id="overlay"></div>
+<div class="popup" id="popup" align="center">
+  <div class="spinner-border"></div>
+  <div><span>Salvando...</span></div>
+</div>
+
+<script>
+  const cards = document.querySelectorAll(".os-card-mobile");
+  const lista = document.getElementById("lista-selecionados");
+  const totalSpan = document.getElementById("total-tecnico");
+  const contadorSelecionadas = document.getElementById("contadorSelecionadas");
+
+  let selecionados = [];
+  let total = 0;
+
+  function atualizarContador() {
+    contadorSelecionadas.textContent = selecionados.length;
+  }
+
+  cards.forEach((card) => {
+    const data = card.querySelector(".data-card").dataset;
+
+    card.addEventListener("click", function (event) {
+      if (event.target.classList.contains("btn-devolver")) return;
+
+      const id = data.id;
+
+      // Verifica se já está selecionado
+      const jaSelecionado = selecionados.some((i) => i.id === id);
+
+      if (!jaSelecionado) {
+        // SELECIONAR
+        card.classList.add("selected");
+
+        const item = {
+          id: data.id,
+          numero_os: data.numeroOs,
+          cliente: data.cliente,
+          cidade: data.cidade,
+          date_os: data.dateOs,
+          date_payment: data.datePayment,
+          id_transaction: data.idTransaction,
+          tecnico_id: data.idTecnico,
+          tecnico_nome: data.nomeTecnico,
+          valor: parseFloat(data.valor),
+        };
+
+        selecionados.push(item);
+
+        const li = document.createElement("li");
+        li.classList.add("list-group-item");
+        li.setAttribute("data-id", id);
+        li.innerHTML = `
+          <strong>OS:</strong> ${item.numero_os}<br>
+          <strong>Cliente:</strong> ${item.cliente}<br>
+          <strong>Valor Empresa:</strong> R$ ${item.valor.toFixed(2)}
+        `;
+        lista.appendChild(li);
+
+        total += item.valor;
+      } else {
+        // DESSELECIONAR
+        card.classList.remove("selected");
+
+        selecionados = selecionados.filter((i) => i.id !== id);
+
+        const li = lista.querySelector(`li[data-id="${id}"]`);
+        if (li) li.remove();
+
+        total -= parseFloat(data.valor);
+      }
+
+      totalSpan.textContent = total.toFixed(2);
+      atualizarContador();
+    });
+  });
+
+  // Botão DEVOLVER
+  document.querySelectorAll(".tag-corrigir").forEach((tag) => {
+    tag.addEventListener("click", function (event) {
+      event.stopPropagation(); // não seleciona o card ao clicar no botão
+
+      const id = this.getAttribute("data-id-transaction");
+      const datePayment = this.getAttribute("data-date-payment");
+
+      if (!confirm("Deseja devolver esta OS?")) return;
+
+      fetch("/cancel_transaction_pendding_tecnico", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: id,
+          date_payment: datePayment,
+        }),
+      })
+        .then((resp) => resp.json())
+        .then((data) => console.log("Success:", data))
+        .catch((err) => console.error("Erro:", err))
+        .finally(() => window.location.reload());
+    });
+  });
+
+  // Confirmar seleção
+  document.getElementById("btnSalvar").addEventListener("click", function () {
+    if (selecionados.length === 0) {
+      alert("Selecione pelo menos uma OS.");
+      return;
+    }
+
+    document.getElementById("overlay").style.display = "block";
+    document.getElementById("popup").style.display = "block";
+
+    fetch("/post_transacao_pendente", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        total_empresa: total,
+        itens: selecionados,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Success:", data);
+      })
+      .catch((error) => {
+        console.error("Erro:", error);
+      })
+      .finally(() => {
+        window.location.reload();
+      });
+  });
+</script>
+
+{% endblock %}

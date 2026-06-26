@@ -1,7 +1,5 @@
 import pyrebase
 
-
-
 db_link = "https://caca-vazamentos-default-rtdb.firebaseio.com"
 
 firebase_config = {

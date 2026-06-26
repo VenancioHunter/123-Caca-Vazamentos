@@ -364,17 +364,11 @@ block content %}
         <option value="">Selecionar Técnico</option>
         <option
           value="Venancio Benevides"
-          data-cnpj="98.765.432/0001-45"
+          data-cnpj="41.713.002/0001-05"
           data-imagem="assinaturavenancio.png"
+          selected
         >
           Venancio Benevides
-        </option>
-        <option
-          value="Alan Honorato"
-          data-cnpj="43.973.146/0001-26"
-          data-imagem="assinaturaalanhonorato.png"
-        >
-          Alan Honorato
         </option>
       </select>
     </div>
@@ -397,10 +391,10 @@ block content %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     const outroServicoCheckbox = document.getElementById(
-      "outroServicoCheckbox"
+      "outroServicoCheckbox",
     );
     const descricaoContainer = document.getElementById(
-      "descricaoPersonalizadaContainer"
+      "descricaoPersonalizadaContainer",
     );
 
     // Exibe ou oculta o campo de descrição ao marcar o checkbox
@@ -417,7 +411,7 @@ block content %}
 <script>
   function exibirRevisaoDeConta() {
     const tipoRelatorio = document.getElementById(
-      "tipodeservicoVistoria"
+      "tipodeservicoVistoria",
     ).value;
 
     // Oculta todas as divs
@@ -447,22 +441,22 @@ block content %}
     let valor = input.value.replace(/\D/g, ""); // Remove todos os caracteres não numéricos
 
     if (valor.length <= 11) {
-      // Formatar como CPF: 123.456.789-09
+      // CPF: 000.000.000-00
       valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
       valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
       valor = valor.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-    } else if (valor.length > 11 && valor.length <= 14) {
-      // Formatar como CNPJ: 112.345.678/0001-23 ou 12.345.678/0001-23
-      valor = valor.replace(/(\d{3})(\d)/, "$1.$2"); // Exemplo: 112.345
-      valor = valor.replace(/(\d{3})(\d)/, "$1.$2"); // Exemplo: 112.345.678
-      valor = valor.replace(/(\d{3})(\d)/, "$1/$2"); // Exemplo: 112.345.678/0001
-      valor = valor.replace(/(\d{4})(\d{1,2})$/, "$1-$2"); // Exemplo: 112.345.678/0001-23
-    } else if (valor.length > 14) {
-      // Adaptar CNPJs maiores que 14 dígitos
-      valor = valor.replace(/(\d{3})(\d)/, "$1.$2"); // Exemplo: 123.456
-      valor = valor.replace(/(\d{3})(\d)/, "$1.$2"); // Exemplo: 123.456.789
-      valor = valor.replace(/(\d{3})(\d)/, "$1/$2"); // Exemplo: 123.456.789/0012
-      valor = valor.replace(/(\d{4})(\d{2})$/, "$1-$2"); // Exemplo: 123.456.789/0012-34
+    } else if (valor.length <= 14) {
+      // CNPJ: 00.000.000/0000-00
+      valor = valor.replace(/^(\d{2})(\d)/, "$1.$2");
+      valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+      valor = valor.replace(/\.(\d{3})(\d)/, ".$1/$2");
+      valor = valor.replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+    } else {
+      // Caso venha maior que 14 (fallback flexível)
+      valor = valor.replace(/^(\d{2})(\d)/, "$1.$2");
+      valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+      valor = valor.replace(/\.(\d{3})(\d)/, ".$1/$2");
+      valor = valor.replace(/(\d{4})(\d{2})$/, "$1-$2");
     }
 
     input.value = valor; // Atualiza o valor do campo
@@ -567,6 +561,7 @@ block content %}
 </script>
 
 <script>
+  /*
   const selectEstado = document.getElementById("estado");
   const selectCidade = document.getElementById("cidade");
 
@@ -656,6 +651,7 @@ block content %}
       { value: "Capivari", text: "Capivari" },
       { value: "Limeira", text: "Limeira" },
       { value: "Sorocaba", text: "Sorocaba" },
+      { value: "Santos", text: "Santos" },
     ],
     SC: [
       { value: "Florianópolis", text: "Florianópolis" },
@@ -722,6 +718,106 @@ block content %}
       });
     }
   });
+  */
+</script>
+
+<script>
+  // ================================
+  // 1. CARREGAR ESTADOS DO FIREBASE
+  // ================================
+  document.addEventListener("DOMContentLoaded", function () {
+    carregarEstados();
+  });
+
+  async function carregarEstados() {
+    try {
+      const resp = await fetch("/api/ufs");
+      const data = await resp.json();
+
+      const estadoSelect = document.getElementById("estado");
+
+      // Limpa e coloca "Selecionar"
+      estadoSelect.innerHTML = `<option value="">Selecionar</option>`;
+
+      // Adiciona os UFs vindos do Firebase
+      data.ufs.forEach((uf) => {
+        const opt = document.createElement("option");
+        opt.value = uf;
+        opt.textContent = uf;
+        estadoSelect.appendChild(opt);
+      });
+
+      // Quando mudar o estado → carregar cidades
+      estadoSelect.addEventListener("change", carregarCidades);
+    } catch (e) {
+      console.error("Erro ao carregar estados:", e);
+    }
+  }
+
+  // =====================================
+  // 2. CARREGAR CIDADES BASEADO NA UF
+  // =====================================
+  async function carregarCidades() {
+    const uf = document.getElementById("estado").value;
+    const cidadeSelect = document.getElementById("cidade");
+
+    if (!uf) {
+      cidadeSelect.innerHTML = `<option value="">Selecione um ESTADO primeiro</option>`;
+      return;
+    }
+
+    cidadeSelect.innerHTML = `<option value="">Carregando...</option>`;
+
+    try {
+      const resp = await fetch(`/api/cidades/${uf}`);
+      const data = await resp.json();
+
+      cidadeSelect.innerHTML = `<option value="">Selecionar</option>`;
+
+      data.cidades.forEach((cidade) => {
+        const opt = document.createElement("option");
+        opt.value = cidade;
+        opt.textContent = cidade;
+        cidadeSelect.appendChild(opt);
+      });
+    } catch (e) {
+      console.error("Erro ao carregar cidades:", e);
+    }
+  }
+
+  // ===================================================
+  // 3. ATUALIZAR TELEFONE DA CIDADE SELECIONADA
+  // ===================================================
+  window.telefoneCidadeSelecionada = null;
+
+  async function atualizarTelefoneCidade() {
+    const uf = document.getElementById("estado").value;
+    const cidade = document.getElementById("cidade").value;
+
+    if (!uf || !cidade) {
+      window.telefoneCidadeSelecionada = null;
+      return;
+    }
+
+    try {
+      const resp = await fetch(
+        `/api/telefone_cidade?uf=${encodeURIComponent(
+          uf,
+        )}&cidade=${encodeURIComponent(cidade)}`,
+      );
+      const data = await resp.json();
+
+      window.telefoneCidadeSelecionada = data.telefone || null;
+    } catch (e) {
+      console.error("Erro ao buscar telefone da cidade:", e);
+      window.telefoneCidadeSelecionada = null;
+    }
+  }
+
+  // Atualiza telefone quando mudar cidade
+  document
+    .getElementById("cidade")
+    .addEventListener("change", atualizarTelefoneCidade);
 </script>
 
 <script>
@@ -733,7 +829,7 @@ block content %}
     const select = document.getElementById("item-select");
     const itemSelecionado = select.value;
     const valorUnit = parseFloat(
-      document.getElementById("item-valor").value.trim()
+      document.getElementById("item-valor").value.trim(),
     );
     const qtd = parseInt(document.getElementById("item-qtd").value.trim());
 
@@ -798,7 +894,7 @@ block content %}
     }
 
     const existe = Array.from(select.options).some(
-      (opt) => opt.value.toLowerCase() === novoItem.toLowerCase()
+      (opt) => opt.value.toLowerCase() === novoItem.toLowerCase(),
     );
     if (existe) {
       alert("Esse item já existe.");

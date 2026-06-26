@@ -1,0 +1,618 @@
+{% extends "layout.html" %} {% block title %}Kanban{% endblock %} {% block
+content %}
+
+<style>
+  /* Evita que elementos internos bloqueiem o drop */
+  .dragging * {
+    pointer-events: none;
+  }
+
+  .kanban-column {
+    min-height: 70vh;
+  }
+
+  .kanban-list {
+    min-height: 60vh;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+  }
+
+  .kanban-card {
+    cursor: grab;
+  }
+
+  .kanban-card.opacity-50 {
+    opacity: 0.5;
+  }
+  .chat-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .chat-msg {
+    max-width: 90%;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .chat-msg.me {
+    align-self: flex-end;
+    background: #d1e7dd;
+  }
+
+  .chat-msg.other {
+    align-self: flex-start;
+    background: #f1f1f1;
+  }
+
+  .chat-user {
+    font-size: 10px;
+    font-weight: bold;
+    opacity: 0.7;
+  }
+  .chat-modal {
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 5px;
+  }
+  .task-field {
+    margin-bottom: 6px;
+  }
+  .chat-time {
+    font-size: 10px;
+    opacity: 0.6;
+    text-align: right;
+    margin-top: 2px;
+  }
+  .task-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #6c757d; /* cinza bootstrap */
+    margin-bottom: 2px;
+  }
+
+  .task-value {
+    font-size: 13px;
+    color: #212529;
+    line-height: 1.4;
+  }
+
+  .task-title {
+    font-weight: 600;
+  }
+
+  .task-desc {
+    font-size: 12px;
+    color: #495057;
+    background: #f8f9fa;
+    padding: 6px 8px;
+    border-radius: 6px;
+
+    /* 🔥 EVITA VAZAMENTO */
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+  }
+</style>
+
+<div class="container-fluid mt-3">
+  <!-- CABEÇALHO -->
+  <div class="d-flex justify-content-between mb-3">
+    <h3>📋 Kanban</h3>
+    <button
+      class="btn btn-primary"
+      data-bs-toggle="modal"
+      data-bs-target="#modalNovaTask"
+    >
+      ➕ Nova Tarefa
+    </button>
+  </div>
+
+  <!-- BOARD -->
+  <div class="row kanban-board">
+    <!-- TODO -->
+    <div class="col kanban-column">
+      <h5>A Fazer</h5>
+      <div class="kanban-list" data-status="todo">
+        {% for t in tasks if t.status == 'todo' %}
+        <div
+          class="card mb-2 kanban-card"
+          draggable="true"
+          data-id="{{ t.id }}"
+        >
+          <div class="card-body p-2">
+            <div class="task-field">
+              <span class="task-label">Título</span>
+              <div class="task-value task-title">{{ t.titulo }}</div>
+            </div>
+
+            {% if t.descricao %}
+            <div class="task-field">
+              <span class="task-label">Descrição</span>
+              <div class="task-value task-desc">{{ t.descricao }}</div>
+            </div>
+            {% endif %}
+
+            <div class="d-flex flex-wrap gap-1 mb-1">
+              <span class="badge bg-secondary"
+                >👤 {{ t.responsavel_nome }}</span
+              >
+
+              <span
+                class="badge
+        {{ 'bg-danger' if t.prioridade == 'alta'
+        else 'bg-warning' if t.prioridade == 'media'
+        else 'bg-success' }}"
+              >
+                🔥 {{ t.prioridade }}
+              </span>
+            </div>
+
+            {% if t.chat %}
+            <div class="chat-box">
+              {% for c in t.chat %}
+              <div
+                class="chat-msg
+      {{ 'me' if c.user_nome == user_name else 'other' }}"
+              >
+                <div class="chat-user">{{ c.user_nome }}</div>
+                <div>{{ c.texto }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <button
+              class="btn btn-sm btn-outline-primary mt-1"
+              onclick="abrirTask('{{ t.id }}')"
+            >
+              💬 Novo comentário
+            </button>
+            {% if role == 'admin' or t.criado_por_id == user_id %}
+<button
+  class="btn btn-sm btn-outline-danger mt-1"
+  onclick="excluirTask('{{ t.id }}')"
+>
+  🗑 Excluir
+</button>
+{% endif %}
+
+            <div class="text-muted small mt-1">
+              ⏱ Atualizado em {{ t.ultimo_status_em }}
+            </div>
+          </div>
+        </div>
+
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- DOING -->
+    <div class="col kanban-column">
+      <h5>Em Andamento</h5>
+      <div class="kanban-list" data-status="doing">
+        {% for t in tasks if t.status == 'doing' %}
+        <div
+          class="card mb-2 kanban-card"
+          draggable="true"
+          data-id="{{ t.id }}"
+        >
+          <div class="card-body p-2">
+            <div class="task-field">
+              <span class="task-label">Título</span>
+              <div class="task-value task-title">{{ t.titulo }}</div>
+            </div>
+
+            {% if t.descricao %}
+            <div class="task-field">
+              <span class="task-label">Descrição</span>
+              <div class="task-value task-desc">{{ t.descricao }}</div>
+            </div>
+            {% endif %}
+
+            <div class="d-flex flex-wrap gap-1 mb-1">
+              <span class="badge bg-secondary"
+                >👤 {{ t.responsavel_nome }}</span
+              >
+
+              <span
+                class="badge
+        {{ 'bg-danger' if t.prioridade == 'alta'
+        else 'bg-warning' if t.prioridade == 'media'
+        else 'bg-success' }}"
+              >
+                🔥 {{ t.prioridade }}
+              </span>
+            </div>
+
+            {% if t.chat %}
+            <div class="chat-box">
+              {% for c in t.chat %}
+              <div
+                class="chat-msg
+      {{ 'me' if c.user_nome == user_name else 'other' }}"
+              >
+                <div class="chat-user">{{ c.user_nome }}</div>
+                <div>{{ c.texto }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <button
+              class="btn btn-sm btn-outline-primary mt-1"
+              onclick="abrirTask('{{ t.id }}')"
+            >
+              💬 Novo comentário
+            </button>
+            {% if role == 'admin' or t.criado_por_id == user_id %}
+<button
+  class="btn btn-sm btn-outline-danger mt-1"
+  onclick="excluirTask('{{ t.id }}')"
+>
+  🗑 Excluir
+</button>
+{% endif %}
+
+            <div class="text-muted small mt-1">
+              ⏱ Atualizado em {{ t.ultimo_status_em }}
+            </div>
+          </div>
+        </div>
+
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- DONE -->
+    <div class="col kanban-column">
+      <h5>Concluído</h5>
+      <div class="kanban-list" data-status="done">
+        {% for t in tasks if t.status == 'done' %}
+        <div
+          class="card mb-2 kanban-card"
+          draggable="true"
+          data-id="{{ t.id }}"
+        >
+          <div class="card-body p-2">
+            <div class="task-field">
+              <span class="task-label">Título</span>
+              <div class="task-value task-title">{{ t.titulo }}</div>
+            </div>
+
+            {% if t.descricao %}
+            <div class="task-field">
+              <span class="task-label">Descrição</span>
+              <div class="task-value task-desc">{{ t.descricao }}</div>
+            </div>
+            {% endif %}
+
+            <div class="d-flex flex-wrap gap-1 mb-1">
+              <span class="badge bg-secondary"
+                >👤 {{ t.responsavel_nome }}</span
+              >
+
+              <span
+                class="badge
+        {{ 'bg-danger' if t.prioridade == 'alta'
+        else 'bg-warning' if t.prioridade == 'media'
+        else 'bg-success' }}"
+              >
+                🔥 {{ t.prioridade }}
+              </span>
+            </div>
+
+            {% if t.chat %}
+            <div class="chat-box">
+              {% for c in t.chat %}
+              <div
+                class="chat-msg
+      {{ 'me' if c.user_nome == user_name else 'other' }}"
+              >
+                <div class="chat-user">{{ c.user_nome }}</div>
+                <div>{{ c.texto }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <button
+              class="btn btn-sm btn-outline-primary mt-1"
+              onclick="abrirTask('{{ t.id }}')"
+            >
+              💬 Novo comentário
+            </button>
+            {% if role == 'admin' or t.criado_por_id == user_id %}
+              <button
+                class="btn btn-sm btn-outline-danger mt-1"
+                onclick="excluirTask('{{ t.id }}')"
+              >
+                🗑 Excluir
+              </button>
+              {% endif %}
+
+            <div class="text-muted small mt-1">
+              ⏱ Atualizado em {{ t.ultimo_status_em }}
+            </div>
+          </div>
+        </div>
+
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= Comentário ================= -->
+<div class="modal fade" id="modalTask">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 id="taskTitulo"></h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div
+  id="taskComentarios"
+  class="chat-modal d-flex flex-column mb-3"
+></div></div>
+
+        <textarea
+          id="novoComentario"
+          class="form-control"
+          placeholder="Adicionar comentário"
+        ></textarea>
+
+        <button class="btn btn-primary mt-2" onclick="enviarComentario()">
+          Comentar
+        </button>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL NOVA TASK ================= -->
+<div class="modal fade" id="modalNovaTask" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" action="/kanban/criar" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nova Tarefa</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <input
+          name="titulo"
+          class="form-control mb-2"
+          placeholder="Título"
+          required
+        />
+
+        <textarea
+          name="descricao"
+          class="form-control mb-2"
+          placeholder="Descrição"
+        ></textarea>
+
+        <select name="prioridade" class="form-control mb-2">
+          <option value="baixa">Baixa</option>
+          <option value="media">Média</option>
+          <option value="alta">Alta</option>
+        </select>
+
+        {% if role == 'admin' %}
+
+        <label class="form-label">Responsável</label>
+
+        <input
+        list="listaUsuarios"
+        id="responsavel_nome"
+        class="form-control mb-2"
+        placeholder="Digite o nome do responsável"
+        autocomplete="off"
+        />
+
+        <datalist id="listaUsuarios">
+        {% for uid, u in users.items() %}
+        <option
+            value="{{ u.name }}"
+            data-id="{{ uid }}"
+        >
+            {{ u.name }} ({{ u.role }})
+        </option>
+        {% endfor %}
+        </datalist>
+
+        <input type="hidden" name="responsavel_id" id="responsavel_id" />
+
+        {% else %}
+        <input type="hidden" name="responsavel_id" value="{{ user_id }}" />
+        {% endif %}
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary">Criar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const nomeInput = document.getElementById("responsavel_nome");
+    const idInput = document.getElementById("responsavel_id");
+    const options = document.querySelectorAll("#listaUsuarios option");
+
+    if (!nomeInput) return;
+
+    nomeInput.addEventListener("input", () => {
+      const valor = nomeInput.value;
+      idInput.value = "";
+
+      options.forEach((opt) => {
+        if (opt.value === valor) {
+          idInput.value = opt.dataset.id;
+        }
+      });
+    });
+  });
+</script>
+
+
+<!-- ================= DRAG & DROP ================= -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    let draggedId = null;
+
+    document.addEventListener("dragstart", (e) => {
+      const card = e.target.closest(".kanban-card");
+      if (!card) return;
+
+      draggedId = card.dataset.id;
+      e.dataTransfer.setData("text/plain", draggedId);
+      e.dataTransfer.effectAllowed = "move";
+
+      setTimeout(() => {
+        card.classList.add("opacity-50");
+        card.classList.add("dragging");
+      }, 0);
+    });
+
+    document.addEventListener("dragend", (e) => {
+      const card = e.target.closest(".kanban-card");
+      if (!card) return;
+
+      card.classList.remove("opacity-50");
+      card.classList.remove("dragging");
+    });
+
+    document.querySelectorAll(".kanban-list").forEach((col) => {
+      col.addEventListener("dragenter", (e) => e.preventDefault());
+
+      col.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      });
+
+      col.addEventListener("drop", async (e) => {
+        e.preventDefault();
+
+        const status = col.dataset.status;
+        const id = e.dataTransfer.getData("text/plain") || draggedId;
+        if (!id || !status) return;
+
+        try {
+          const resp = await fetch("/kanban/mover", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, status }),
+          });
+
+          if (!resp.ok) {
+            console.error("Erro ao mover task");
+            return;
+          }
+
+          const card = document.querySelector(
+            `.kanban-card[data-id="${CSS.escape(id)}"]`
+          );
+          if (card) col.appendChild(card);
+        } catch (err) {
+          console.error("Erro:", err);
+        }
+      });
+    });
+  });
+</script>
+
+<script>
+  async function atualizarComentarios(id) {
+    const resp = await fetch(`/kanban/task/${id}`);
+    const task = await resp.json();
+
+    document.getElementById("taskTitulo").innerText = task.titulo;
+
+    const area = document.getElementById("taskComentarios");
+    area.innerHTML = "";
+
+    Object.values(task.comentarios || {}).forEach((c) => {
+      const isMe = c.user_nome === "{{ user_name }}";
+
+      area.innerHTML += `
+        <div class="chat-msg ${isMe ? "me" : "other"}">
+          <div class="chat-user">${c.user_nome}</div>
+          <div>${c.texto}</div>
+          <div class="chat-time">${c.data}</div>
+        </div>
+      `;
+    });
+
+    // 🔥 sempre rola para a última mensagem
+    area.scrollTop = area.scrollHeight;
+  }
+
+  let taskAtual = null;
+
+  async function abrirTask(id) {
+    taskAtual = id;
+    await atualizarComentarios(id);
+
+    const modal = new bootstrap.Modal(
+      document.getElementById("modalTask")
+    );
+    modal.show();
+  }
+
+  async function enviarComentario() {
+    const texto = document.getElementById("novoComentario").value.trim();
+    if (!texto) return;
+
+    await fetch("/kanban/comentar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: taskAtual, texto }),
+    });
+
+    document.getElementById("novoComentario").value = "";
+    location.reload();
+    // 🔥 atualiza SEM reload
+    await atualizarComentarios(taskAtual);
+  }
+</script>
+<script>
+  async function excluirTask(id) {
+    if (!confirm("Tem certeza que deseja excluir esta tarefa?")) return;
+
+    try {
+      const resp = await fetch("/kanban/excluir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!resp.ok) {
+        const txt = await resp.text();
+        alert("Não foi possível excluir. " + txt);
+        return;
+      }
+
+      location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao excluir a tarefa.");
+    }
+  }
+</script>
+
+
+{% endblock %}

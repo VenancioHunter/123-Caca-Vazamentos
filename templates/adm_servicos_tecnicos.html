@@ -1,0 +1,708 @@
+{% extends "layout.html" %}
+
+{% block title %}Serviços por Técnico{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --panel-gradient: linear-gradient(135deg, #0d5590 0%, #1f7fa7 48%, #6fc7cf 100%);
+    --surface: #ffffff;
+    --surface-soft: #f4f8fc;
+    --border-soft: rgba(15, 83, 122, 0.12);
+    --text-strong: #17354b;
+    --text-soft: #667a8b;
+    --shadow-soft: 0 22px 54px rgba(19, 56, 88, 0.1);
+    --success-soft: #e7f7ef;
+    --info-soft: #e8f2ff;
+  }
+
+  .performance-shell {
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+
+  .hero-panel {
+    position: relative;
+    overflow: hidden;
+    border-radius: 30px;
+    background: var(--panel-gradient);
+    color: #fff;
+    box-shadow: 0 28px 70px rgba(13, 85, 144, 0.18);
+  }
+
+  .hero-panel::before,
+  .hero-panel::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .hero-panel::before {
+    width: 220px;
+    height: 220px;
+    top: -70px;
+    right: -50px;
+  }
+
+  .hero-panel::after {
+    width: 170px;
+    height: 170px;
+    left: -30px;
+    bottom: -60px;
+  }
+
+  .hero-layer {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .hero-title {
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.05;
+    font-weight: 800;
+    margin: 18px 0 12px;
+  }
+
+  .hero-copy {
+    margin: 0;
+    max-width: 700px;
+    color: rgba(255, 255, 255, 0.88);
+  }
+
+  .filter-card {
+    border-radius: 24px;
+    padding: 22px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+  }
+
+  .filter-card label {
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .filter-card .form-select,
+  .filter-card .btn {
+    min-height: 50px;
+    border-radius: 16px;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .filter-card .form-select {
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--text-strong);
+  }
+
+  .filter-card .btn {
+    background: #fff;
+    color: #0d5590;
+    font-weight: 700;
+  }
+
+  .filter-actions {
+    display: grid;
+    gap: 10px;
+  }
+
+  .stats-grid {
+    margin-top: -34px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .stat-card {
+    height: 100%;
+    border: 1px solid var(--border-soft);
+    border-radius: 22px;
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .stat-label {
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
+  .stat-value {
+    color: var(--text-strong);
+    font-size: 2rem;
+    line-height: 1;
+    font-weight: 800;
+    margin-top: 10px;
+  }
+
+  .stat-note {
+    color: var(--text-soft);
+    margin-top: 10px;
+    font-size: 0.92rem;
+  }
+
+  .stat-card.success {
+    background: linear-gradient(180deg, #ffffff 0%, #f1fbf5 100%);
+  }
+
+  .stat-card.info {
+    background: linear-gradient(180deg, #ffffff 0%, #f3f8ff 100%);
+  }
+
+  .section-block {
+    margin-top: 42px;
+  }
+
+  .section-title {
+    color: var(--text-strong);
+    font-size: 1.45rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  .section-copy {
+    color: var(--text-soft);
+    margin-bottom: 0;
+  }
+
+  .technician-grid {
+    display: grid;
+    gap: 24px;
+    margin-top: 22px;
+  }
+
+  .technician-panel {
+    border: 1px solid var(--border-soft);
+    border-radius: 26px;
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+  }
+
+  .technician-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--border-soft);
+    background:
+      radial-gradient(circle at top right, rgba(111, 199, 207, 0.16), transparent 34%),
+      linear-gradient(180deg, #fbfdff 0%, #f4f9fd 100%);
+  }
+
+  .technician-name {
+    color: var(--text-strong);
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin: 0;
+  }
+
+  .technician-meta {
+    color: var(--text-soft);
+    margin-top: 8px;
+  }
+
+  .pill-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    margin: 8px 10px 0 0;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+    background: #fff;
+    color: var(--text-strong);
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  .pill-stat strong {
+    font-size: 1rem;
+  }
+
+  .technician-body {
+    padding: 24px;
+  }
+
+  .table-responsive {
+    border: 1px solid rgba(20, 55, 90, 0.08);
+    border-radius: 20px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .performance-table {
+    margin: 0;
+    font-size: 0.92rem;
+  }
+
+  .performance-table thead th {
+    background: #f4f8fc;
+    color: var(--text-strong);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border-soft);
+    padding: 12px 10px;
+    white-space: nowrap;
+    line-height: 1.2;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .performance-table tbody td {
+    padding: 12px 10px;
+    vertical-align: middle;
+    color: var(--text-strong);
+    border-color: rgba(20, 55, 90, 0.08);
+    text-align: center;
+  }
+
+  .performance-table tbody tr:hover {
+    background: #f9fcff;
+  }
+
+  .service-name {
+    text-align: left !important;
+    font-weight: 700;
+  }
+
+  .metric-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 52px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.78rem;
+  }
+
+  .metric-badge.total {
+    background: #eef3f8;
+    color: #586c7e;
+  }
+
+  .metric-badge.success {
+    background: var(--success-soft);
+    color: #17744b;
+  }
+
+  .inner-empty {
+    padding: 28px 22px;
+    text-align: center;
+    border: 1px dashed rgba(13, 85, 144, 0.18);
+    border-radius: 18px;
+    background: #fbfdff;
+    color: var(--text-soft);
+  }
+
+  .empty-state {
+    margin-top: 22px;
+    padding: 46px 28px;
+    text-align: center;
+    border: 1px dashed rgba(13, 85, 144, 0.24);
+    border-radius: 28px;
+    background: linear-gradient(180deg, #fbfdff 0%, #f2f8fd 100%);
+    color: var(--text-soft);
+  }
+
+  .empty-state h3 {
+    color: var(--text-strong);
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+
+  @media (max-width: 991px) {
+    .stats-grid {
+      margin-top: 22px;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .hero-panel,
+    .technician-panel,
+    .empty-state {
+      border-radius: 24px;
+    }
+
+    .filter-card,
+    .technician-header,
+    .technician-body {
+      padding: 18px;
+    }
+  }
+</style>
+
+<div class="performance-shell py-4">
+  <section class="hero-panel p-4 p-lg-5">
+    <div class="row g-4 align-items-end hero-layer">
+      <div class="col-lg-7">
+        <span class="hero-pill">Admin · Técnicos</span>
+        <h1 class="hero-title">Serviços por Técnico</h1>
+        <p class="hero-copy">
+          Acompanhe a produção mensal de cada técnico com uma tabela por profissional,
+          agrupando os tipos de serviço, a quantidade executada, o total financeiro
+          e o valor médio por serviço.
+        </p>
+      </div>
+      <div class="col-lg-5">
+        <form method="post" class="filter-card">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="selected_month">Mês</label>
+              <select id="selected_month" name="selected_month" class="form-select">
+                {% for mes in meses %}
+                <option value="{{ mes.value }}" {% if mes.value == selected_month %}selected{% endif %}>
+                  {{ mes.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="selected_year">Ano</label>
+              <select id="selected_year" name="selected_year" class="form-select">
+                {% for year in years %}
+                <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>
+                  {{ year }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="selected_technician">Técnico</label>
+              <select id="selected_technician" name="selected_technician" class="form-select">
+                <option value="all" {% if selected_technician == "all" %}selected{% endif %}>
+                  Todos
+                </option>
+                {% for technician in technician_options %}
+                <option value="{{ technician.id }}" {% if technician.id == selected_technician %}selected{% endif %}>
+                  {{ technician.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <div class="filter-actions">
+                <button type="submit" class="btn w-100">Atualizar painel</button>
+                <button type="button" class="btn w-100" onclick="generatePdfReport()">
+                  Gerar relatório em PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-grid">
+    <div class="row g-3">
+      <div class="col-sm-6 col-xl-3">
+        <article class="stat-card p-4">
+          <div class="stat-label">Período</div>
+          <div class="stat-value">{{ selected_month_name }}</div>
+          <div class="stat-note">{{ selected_year }}</div>
+        </article>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <article class="stat-card p-4">
+          <div class="stat-label">Técnicos</div>
+          <div class="stat-value">{{ total_technicians }}</div>
+          <div class="stat-note">Exibidos no painel atual</div>
+        </article>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <article class="stat-card info p-4">
+          <div class="stat-label">Serviços</div>
+          <div class="stat-value">{{ total_services_geral }}</div>
+          <div class="stat-note">Ordens de serviço no período</div>
+        </article>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <article class="stat-card success p-4">
+          <div class="stat-label">Total Financeiro</div>
+          <div class="stat-value">{{ total_amount_geral_display }}</div>
+          <div class="stat-note">Ticket médio geral: {{ average_ticket_geral_display }}</div>
+        </article>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <article class="stat-card p-4">
+          <div class="stat-label">Retornos</div>
+          <div class="stat-value">{{ total_retornos_geral }}</div>
+          <div class="stat-note">Mostrados em separado, fora dos cálculos da tabela</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block">
+    <h2 class="section-title">Resumo consolidado</h2>
+    <p class="section-copy">
+      Esta tabela resume todos os técnicos exibidos no painel, separando o total por tipo de serviço.
+    </p>
+
+    {% if technician_summary_rows %}
+    <div class="table-responsive mt-4">
+      <table class="table performance-table align-middle summary-overview-table">
+        <thead>
+          <tr>
+            <th>Técnico</th>
+            {% for service_name in summary_service_columns %}
+            <th>{{ service_name }}</th>
+            {% endfor %}
+            <th>Total serviços</th>
+            <th>Retornos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in technician_summary_rows %}
+          <tr>
+            <td class="service-name">{{ row.technician_name }}</td>
+            {% for service_name in summary_service_columns %}
+            <td>{{ row.service_totals.get(service_name, 0) }}</td>
+            {% endfor %}
+            <td><span class="metric-badge total">{{ row.total_services }}</span></td>
+            <td><span class="metric-badge success">{{ row.total_retornos }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="section-block">
+    <h2 class="section-title">Produção por técnico</h2>
+    <p class="section-copy">
+      Cada tabela agrupa os serviços lançados em <code>ordens_servico</code> para o mês selecionado.
+      Os retornos aparecem em separado e não influenciam os resultados abaixo.
+    </p>
+
+    {% if technician_tables %}
+    <div class="technician-grid">
+      {% for technician in technician_tables %}
+      <article class="technician-panel">
+        <div class="technician-header">
+          <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+            <div>
+              <h3 class="technician-name">{{ technician.technician_name }}</h3>
+              <p class="technician-meta">
+                {{ technician.services|length }} tipo(s) de serviço em {{ selected_month_name }}/{{ selected_year }}
+              </p>
+            </div>
+            <div class="d-flex flex-wrap align-items-start justify-content-lg-end">
+              <div class="pill-stat">Total de serviços <strong>{{ technician.total_services }}</strong></div>
+              <div class="pill-stat">Total financeiro <strong>{{ technician.total_amount_display }}</strong></div>
+              <div class="pill-stat">Média por serviço <strong>{{ technician.average_ticket_display }}</strong></div>
+              <div class="pill-stat">Retornos <strong>{{ technician.total_retornos }}</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="technician-body">
+          {% if technician.services %}
+          <div class="table-responsive">
+            <table class="table performance-table align-middle">
+              <thead>
+                <tr>
+                  <th>Tipo de serviço</th>
+                  <th>Total de serviços</th>
+                  <th>Total financeiro</th>
+                  <th>Valor médio por serviço</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for service in technician.services %}
+                <tr>
+                  <td class="service-name">{{ service.service }}</td>
+                  <td><span class="metric-badge total">{{ service.total_services }}</span></td>
+                  <td><span class="metric-badge success">{{ service.total_amount_display }}</span></td>
+                  <td>{{ service.average_amount_display }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="inner-empty">
+            Nenhum serviço contabilizável para este técnico no período.
+            {% if technician.total_retornos %}
+            Apenas retornos foram encontrados.
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h3>Nenhum serviço encontrado</h3>
+      <p>Não há ordens de serviço para o período ou técnico selecionado.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script>
+  function generatePdfReport() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const marginX = 14;
+
+    const selectedMonth = document.getElementById("selected_month");
+    const selectedYear = document.getElementById("selected_year");
+    const selectedTechnician = document.getElementById("selected_technician");
+    const monthLabel = selectedMonth.options[selectedMonth.selectedIndex]?.text || "";
+    const yearLabel = selectedYear.value || "";
+    const technicianLabel =
+      selectedTechnician.options[selectedTechnician.selectedIndex]?.text || "Todos";
+
+    const statCards = document.querySelectorAll(".stats-grid .stat-card");
+    const stats = Array.from(statCards).map((card) => ({
+      label: card.querySelector(".stat-label")?.innerText?.trim() || "",
+      value: card.querySelector(".stat-value")?.innerText?.trim() || "",
+      note: card.querySelector(".stat-note")?.innerText?.trim() || "",
+    }));
+    const generatedAt = new Date().toLocaleString("pt-BR");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("Relatório de Serviços por Técnico", marginX, 16);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Período: ${monthLabel}/${yearLabel}`, marginX, 23);
+    doc.text(`Técnico: ${technicianLabel}`, marginX, 29);
+    doc.text(`Gerado em: ${generatedAt}`, marginX, 35);
+
+    if (stats.length) {
+      doc.autoTable({
+        startY: 40,
+        head: [["Indicador", "Valor", "Observação"]],
+        body: stats.map((item) => [item.label, item.value, item.note]),
+        theme: "grid",
+        styles: { fontSize: 8, cellPadding: 2.5 },
+        headStyles: { fillColor: [13, 85, 144] },
+        margin: { left: marginX, right: marginX },
+      });
+    }
+
+    const summaryTable = document.querySelector(".summary-overview-table");
+    if (summaryTable) {
+      const summaryHeaders = Array.from(summaryTable.querySelectorAll("thead th")).map((th) =>
+        th.innerText.replace(/\s+/g, " ").trim()
+      );
+      const summaryRows = Array.from(summaryTable.querySelectorAll("tbody tr")).map((tr) =>
+        Array.from(tr.querySelectorAll("td")).map((td) =>
+          td.innerText.replace(/\s+/g, " ").trim()
+        )
+      );
+
+      doc.autoTable({
+        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 6 : 40,
+        head: [summaryHeaders],
+        body: summaryRows,
+        theme: "grid",
+        styles: { fontSize: 7, cellPadding: 1.8 },
+        headStyles: { fillColor: [31, 127, 167] },
+        margin: { left: 8, right: 8 },
+      });
+    }
+
+    const panels = document.querySelectorAll(".technician-panel");
+    if (!panels.length) {
+      doc.save(`servicos-tecnicos-${yearLabel}-${selectedMonth.value || "mes"}.pdf`);
+      return;
+    }
+
+    panels.forEach((panel) => {
+      doc.addPage("a4", "landscape");
+
+      const technicianName =
+        panel.querySelector(".technician-name")?.innerText?.trim() || "Técnico";
+      const technicianMeta =
+        panel.querySelector(".technician-meta")?.innerText?.trim() || "";
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(technicianName, marginX, 18);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(technicianMeta, marginX, 24);
+      doc.text(`Período: ${monthLabel}/${yearLabel}`, pageWidth - marginX, 18, {
+        align: "right",
+      });
+
+      const pillStats = Array.from(panel.querySelectorAll(".pill-stat")).map((item) =>
+        item.innerText.replace(/\s+/g, " ").trim()
+      );
+
+      if (pillStats.length) {
+        doc.autoTable({
+          startY: 28,
+          head: [["Resumo do Técnico"]],
+          body: pillStats.map((item) => [item]),
+          theme: "grid",
+          styles: { fontSize: 8, cellPadding: 2.5 },
+          headStyles: { fillColor: [31, 127, 167] },
+          margin: { left: marginX, right: marginX },
+        });
+      }
+
+      let nextY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 6 : 34;
+      const table = panel.querySelector(".performance-table");
+
+      if (table) {
+        const headers = Array.from(table.querySelectorAll("thead th")).map((th) =>
+          th.innerText.replace(/\s+/g, " ").trim()
+        );
+        const rows = Array.from(table.querySelectorAll("tbody tr")).map((tr) =>
+          Array.from(tr.querySelectorAll("td")).map((td) =>
+            td.innerText.replace(/\s+/g, " ").trim()
+          )
+        );
+
+        doc.autoTable({
+          startY: nextY,
+          head: [headers],
+          body: rows,
+          theme: "grid",
+          styles: { fontSize: 7.5, cellPadding: 2 },
+          headStyles: { fillColor: [13, 85, 144] },
+          margin: { left: marginX, right: marginX, bottom: 10 },
+        });
+      } else {
+        const emptyText =
+          panel.querySelector(".inner-empty")?.innerText?.replace(/\s+/g, " ").trim() ||
+          "Nenhum serviço contabilizável para este técnico no período.";
+        doc.setFontSize(10);
+        doc.text(emptyText, marginX, nextY + 8);
+      }
+    });
+
+    doc.save(`servicos-tecnicos-${yearLabel}-${selectedMonth.value || "mes"}.pdf`);
+  }
+</script>
+{% endblock %}

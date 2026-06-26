@@ -1,30 +1,22 @@
 <!-- templates/dashboard.html -->
-{% extends "layout.html" %}
+{% extends "layout.html" %} {% block title %}Painel OS{% endblock %} {% block
+content %}
+<h2>Oss</h2>
 
-{% block title %}Painel OS{% endblock %}
-
-{% block content %}
-<h2>Bem-vindo ao Dashboard</h2>
-
-<link href="../static/css/dashboard.css" rel="stylesheet">
+<link href="../static/css/dashboard.css" rel="stylesheet" />
 <div>
-    <div class="row text-center mt-4">
-        <div class="col-sm-12">
-            <div class="border border-0 m-2">
-                <a class="card-presentation" href="{{ url_for('adm_lista_os') }}" style="text-decoration: none;">
-                    <h5>Ver OSs</h5>
-                </a>
-            </div>
-        </div>
+  <div class="row text-center mt-4">
+    <div class="col-sm-12">
+      <div class="border border-0 m-2">
+        <a
+          class="card-presentation"
+          href="{{ url_for('adm_schedule') }}"
+          style="text-decoration: none"
+        >
+          <h5>Agenda</h5>
+        </a>
+      </div>
     </div>
-    <div class="row text-center mt-4">
-        <div class="col-sm-12">
-            <div class="border border-0 m-2">
-                <a class="card-presentation" href="{{ url_for('adm_schedule') }}" style="text-decoration: none;">
-                    <h5>Agenda</h5>
-                </a>
-            </div>
-        </div>
-    </div>
+  </div>
 </div>
 {% endblock %}

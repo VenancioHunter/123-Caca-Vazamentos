@@ -89,11 +89,11 @@ block content %}
 
 <h1 class="page-title">Gerenciamento de Cidades</h1>
 
-<!-- SEÇÃO 1 -->
+<!-- SEÇÃO ÚNICA: Adicionar Cidade ao Relatório -->
 <div class="section-card">
-  <h2 class="section-title">Adicionar Cidade ao Sistema</h2>
+  <h2 class="section-title">Adicionar Cidade ao Relatório</h2>
 
-  <form method="POST" action="/add_city_sistema">
+  <form method="POST" action="/add_city">
     <!-- UF -->
     <div class="mb-4">
       <label class="form-label" for="uf">Estado (UF)</label>
@@ -105,8 +105,8 @@ block content %}
         placeholder="Digite o Estado ou a sigla (ex: GO ou Goiás)"
         required
         autocomplete="off"
-        oninput="onUFInputChange()"
       />
+      <!-- datalist de ESTADOS -->
       <datalist id="listaUFs">
         <option value="AC">Acre</option>
         <option value="AL">Alagoas</option>
@@ -136,11 +136,6 @@ block content %}
         <option value="SE">Sergipe</option>
         <option value="TO">Tocantins</option>
       </datalist>
-
-      <small class="form-text">
-        Você pode digitar <b>GO</b>, <b>Goiás</b>, <b>SP</b>, <b>São Paulo</b>,
-        etc.
-      </small>
     </div>
 
     <!-- Cidade -->
@@ -155,51 +150,8 @@ block content %}
         placeholder="Digite a cidade..."
         required
       />
+      <!-- datalist de CIDADES, preenchido dinamicamente -->
       <datalist id="listaCidades"></datalist>
-    </div>
-
-    <div class="text-center">
-      <button class="btn-submit btn btn-primary" type="submit">
-        Adicionar Cidade
-      </button>
-    </div>
-  </form>
-</div>
-
-<div class="line-divider"></div>
-
-<!-- SEÇÃO 2 -->
-<div class="section-card">
-  <h2 class="section-title">Adicionar Cidade ao Relatório</h2>
-
-  <form method="POST" action="/add_city_relatorio">
-    <!-- UF -->
-    <div class="mb-4">
-      <label class="form-label" for="uf">Estado (UF)</label>
-      <input
-        class="form-control"
-        id="uf"
-        name="uf"
-        list="listaUFs"
-        placeholder="Digite o Estado ou a sigla (ex: GO ou Goiás)"
-        required
-        autocomplete="off"
-        oninput="onUFInputChange()"
-      />
-    </div>
-
-    <!-- Cidade -->
-    <div class="mb-4">
-      <label class="form-label" for="city">Cidade</label>
-      <input
-        class="form-control"
-        list="listaCidades"
-        type="text"
-        id="city"
-        name="city"
-        placeholder="Digite a cidade..."
-        required
-      />
     </div>
 
     <!-- Telefone -->
@@ -309,36 +261,25 @@ block content %}
     if (!valor) return "";
     const v = valor.trim().toLowerCase();
     if (UF_MAP[v]) return UF_MAP[v];
-    if (v.length === 2) return v.toUpperCase(); // fallback se já for sigla válida
+    if (v.length === 2) return v.toUpperCase(); // fallback se já for sigla
     return "";
   }
 
-  function onUFInputChange() {
-    const ufInput = document.getElementById("uf");
-    const ufCode = resolverUF(ufInput.value);
-    // Quando tiver 2+ letras, tenta carregar cidades
-    if (ufInput.value.trim().length >= 2 && ufCode) {
-      ufInput.value = ufCode; // normaliza para a sigla
-      carregarCidadesIBGE(ufCode);
-    }
-  }
-
-  // Também normaliza e carrega cidades ao sair do campo
+  // Quando sair do campo UF (blur), normaliza e carrega cidades
   document.getElementById("uf").addEventListener("blur", function () {
     const ufInput = document.getElementById("uf");
     const ufCode = resolverUF(ufInput.value);
+
     if (ufCode) {
-      ufInput.value = ufCode;
-      carregarCidadesIBGE(ufCode);
+      ufInput.value = ufCode; // coloca só a sigla (GO, SP, etc.)
+      carregarCidadesIBGE(ufCode); // carrega listaCidades
     }
   });
 
-  async function carregarCidadesIBGE(ufCodeParam) {
-    const ufInput = document.getElementById("uf");
+  async function carregarCidadesIBGE(ufCode) {
     const datalist = document.getElementById("listaCidades");
     datalist.innerHTML = "";
 
-    const ufCode = ufCodeParam || resolverUF(ufInput.value);
     if (!ufCode) return;
 
     const url = `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${ufCode}/municipios`;

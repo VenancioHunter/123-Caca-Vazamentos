@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+﻿from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import pyrebase
 from functools import wraps
 from datetime import datetime, timedelta
@@ -10,9 +10,10 @@ from core.user.class_user_wallet import User_Wallet
 from core.user.class_user_attendant_wallet import User_Wallet_Attendant
 from core.user.class_user import User
 import pytz
-from config import db, auth, storage
+from config import db, auth, storage, firebase
 from collections import defaultdict
 from core.cities.class_cities import Cities
+from core.advanced_signature_component import AdvancedSignatureComponent
 from core.financeiro.class_financeiro import Financeiro
 from flask_cors import CORS
 
@@ -25,7 +26,7 @@ app.secret_key = 'secret'
 def datetimeformat(value, format='%d/%m/%Y %H:%M:%S'):
     sao_paulo_tz = pytz.timezone('America/Sao_Paulo')
     
-    # Converta o timestamp para o horário de São Paulo
+    # Converta o timestamp para o horÃ¡rio de SÃ£o Paulo
     dt_sao_paulo = datetime.fromtimestamp(value, sao_paulo_tz)
     
     # Formate a data e hora no formato desejado
@@ -38,6 +39,7 @@ def datetimeformathour(value, format='%H:%M'):
 app.jinja_env.filters['datetimeformat'] = datetimeformat
 
 app.jinja_env.filters['datetimeformathour'] = datetimeformathour
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -74,13 +76,13 @@ def signup():
         password = request.form['password']
         try:
             user = auth.create_user_with_email_and_password(email, password)
-            # Defina o nível de acesso padrão e salve o nome do usuário
+            # Defina o nÃ­vel de acesso padrÃ£o e salve o nome do usuÃ¡rio
             db.child("users").child(user['localId']).set({
                 "name": name,
                 "email": email,
                 "password": password,
-                "role": "user",  # Define o papel padrão como 'user'
-                "cities": []  # Lista de cidades vazia por padrão
+                "role": "user",  # Define o papel padrÃ£o como 'user'
+                "cities": []  # Lista de cidades vazia por padrÃ£o
             })
             return redirect(url_for('login'))
         except:
@@ -111,6 +113,14 @@ def check_roles(allowed_roles):
     return decorator
 
 
+AdvancedSignatureComponent.register_component(
+    app,
+    firebase.database,
+    check_roles,
+    report_node="relatorios",
+)
+
+
 @app.route("/", methods=["POST", "GET"])
 def homepage():
     if 'user' not in session:
@@ -128,13 +138,13 @@ def homepage():
 @app.route('/dashboard')
 @check_roles(['user', 'admin'])
 def dashboard():
-    user_email = session.get('email', 'Usuário')
+    user_email = session.get('email', 'UsuÃ¡rio')
     return render_template('dashboard.html', user_email=user_email)
 
 @app.route('/dashboard_tecnico')
 @check_roles(['tecnico'])
 def dashboard_tecnico():
-    user_email = session.get('email', 'Usuário')
+    user_email = session.get('email', 'UsuÃ¡rio')
     return render_template('dashboard_tecnico.html', user_email=user_email)
 
 
@@ -159,12 +169,12 @@ def attendance():
 @app.route('/add_city', methods=['GET', 'POST'])
 @check_roles(['admin'])
 def add_city():
-    '''if request.method == 'POST':
+    if request.method == 'POST':
         uf_name = request.form['uf']
         city_name = request.form['city']
         phone_number = request.form['phone']
 
-        # Verifique se a cidade já existe
+        # Verifique se a cidade jÃ¡ existe
         cities = db.child("cities").get().val() or {}
         if city_name not in cities.values():
             db.child("cities").push(city_name)
@@ -172,9 +182,8 @@ def add_city():
             db.child("uf").child(uf_name).child(city_name).set(phone_number)
             return redirect(url_for('add_city'))
         else:
-            return "Cidade já existe"
-        db.child("uf").child(uf_name).child(city_name).set(phone_number)
-        return redirect(url_for('add_city'))'''
+            return "Cidade jÃ¡ existe"
+        
 
     return render_template('add_city.html')
 
@@ -184,7 +193,7 @@ def add_city_sistema():
     if request.method == 'POST':
         city_name = request.form['city']
 
-        # Verifique se a cidade já existe
+        # Verifique se a cidade jÃ¡ existe
         cities = db.child("cities").get().val() or {}
         if city_name not in cities.values():
             db.child("cities").push(city_name)
@@ -192,7 +201,7 @@ def add_city_sistema():
             
             return redirect(url_for('add_city'))
         else:
-            return "Cidade já existe"
+            return "Cidade jÃ¡ existe"
        
     return render_template('add_city.html')
 
@@ -224,19 +233,19 @@ def link_user_city():
         user_id = request.form['user_id']
         city = request.form['city']
 
-        # Obtenha as cidades atuais do usuário
+        # Obtenha as cidades atuais do usuÃ¡rio
         user_cities = db.child("users").child(user_id).child("cities").get().val() or []
 
         if city not in user_cities:
             user_cities.append(city)
             db.child("users").child(user_id).update({"cities": user_cities})
 
-        return "Usuário vinculado à cidade com sucesso"
+        return "UsuÃ¡rio vinculado Ã  cidade com sucesso"
 
-    # Obtenha todos os usuários e cidades para o formulário
+    # Obtenha todos os usuÃ¡rios e cidades para o formulÃ¡rio
     users = db.child("users").get().val()
 
-    # Filtrar apenas os usuários com papel "user"
+    # Filtrar apenas os usuÃ¡rios com papel "user"
     user_role = 'user'
     users = {user_id: user for user_id, user in users.items() if user.get('role') == user_role}
 
@@ -246,12 +255,12 @@ def link_user_city():
 
 
 def convert_monetary_value(value_str):
-    # Verifique se o valor já está no formato desejado
+    # Verifique se o valor jÃ¡ estÃ¡ no formato desejado
     if '.' in value_str and ',' not in value_str:
-        # Retorne o valor como está, pois já está no formato correto
+        # Retorne o valor como estÃ¡, pois jÃ¡ estÃ¡ no formato correto
         return value_str
 
-    # Se não estiver no formato desejado, faça a substituição necessária
+    # Se nÃ£o estiver no formato desejado, faÃ§a a substituiÃ§Ã£o necessÃ¡ria
     clean_value = value_str.replace('.', '').replace(',', '.')
 
     return clean_value
@@ -266,7 +275,7 @@ def attendance_records():
     user_id = session['user']
 
     if request.method == 'POST':
-        # Dados do formulário
+        # Dados do formulÃ¡rio
         canal = request.form['canal']
         name = request.form['name']
         sexo = request.form['sexo']
@@ -289,8 +298,8 @@ def attendance_records():
         
         now = datetime.now(sao_paulo_tz)
         year = str(now.year)
-        month = f"{now.month:02d}"  # Garantir que o mês tenha dois dígitos
-        day = f"{now.day:02d}"  # Garantir que o dia tenha dois dígitos
+        month = f"{now.month:02d}"  # Garantir que o mÃªs tenha dois dÃ­gitos
+        day = f"{now.day:02d}"  # Garantir que o dia tenha dois dÃ­gitos
 
         # Criar um registro de atendimento
         attendance_record = {
@@ -310,11 +319,11 @@ def attendance_records():
         db.child("attendance_records").child(city).child(year).child(month).child(day).push(attendance_record)
         return redirect(url_for('dashboard'))
 
-    # Carregar as cidades vinculadas ao usuário
+    # Carregar as cidades vinculadas ao usuÃ¡rio
     user_data = db.child("users").child(user_id).get().val()
     cities = user_data.get('cities', [])
 
-    # Carregar todos os serviços disponíveis
+    # Carregar todos os serviÃ§os disponÃ­veis
     services = db.child("services").get().val() or {}
 
     return render_template('attendance_records.html', cities=cities, services=services)
@@ -326,13 +335,13 @@ def add_service():
     if request.method == 'POST':
         service_name = request.form['service']
 
-        # Verifique se o serviço já existe
+        # Verifique se o serviÃ§o jÃ¡ existe
         services = db.child("services").get().val() or {}
         if service_name not in services.values():
             db.child("services").push(service_name)
-            return "Serviço adicionado com sucesso"
+            return "ServiÃ§o adicionado com sucesso"
         else:
-            return "Serviço já existe"
+            return "ServiÃ§o jÃ¡ existe"
 
     return render_template('add_service.html')
 
@@ -352,7 +361,7 @@ def consulta_atendimentos():
 
     user_id = session['user']
 
-    # Carregar as cidades vinculadas ao usuário
+    # Carregar as cidades vinculadas ao usuÃ¡rio
     user_data = db.child("users").child(user_id).get().val()
     cities = user_data.get('cities', [])
 
@@ -364,7 +373,7 @@ def adm_consulta_atendimentos():
     if 'user' not in session:
         return redirect(url_for('login'))
 
-    # Carregar as cidades vinculadas ao usuário
+    # Carregar as cidades vinculadas ao usuÃ¡rio
     cities = db.child("cities").get().val().values()
 
     return render_template('adm_consulta_atendimentos.html', cities=cities)
@@ -378,20 +387,20 @@ def view_attendance():
     date_str = request.args.get('date')
 
     if not city or not date_str:
-        return "Cidade ou data não fornecida."
+        return "Cidade ou data nÃ£o fornecida."
 
-    # Verifique se o usuário tem permissão para acessar esta cidade
+    # Verifique se o usuÃ¡rio tem permissÃ£o para acessar esta cidade
     user_id = session['user']
     user_data = db.child("users").child(user_id).get().val()
 
     if city not in user_data.get('cities', []):
-        return "Você não tem permissão para acessar registros desta cidade."
+        return "VocÃª nÃ£o tem permissÃ£o para acessar registros desta cidade."
 
-    # Converter a data fornecida para ano, mês e dia
+    # Converter a data fornecida para ano, mÃªs e dia
     try:
         date = datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
-        return "Formato de data inválido."
+        return "Formato de data invÃ¡lido."
 
     year = str(date.year)
     month = f"{date.month:02d}"
@@ -415,9 +424,9 @@ def adm_view_attendance():
     date_str = request.args.get('date')
 
     if not city or not date_str:
-        return "Cidade ou data não fornecida."
+        return "Cidade ou data nÃ£o fornecida."
 
-    # Verifique se o usuário tem permissão para acessar esta cidade
+    # Verifique se o usuÃ¡rio tem permissÃ£o para acessar esta cidade
     user_id = session['user']
     user_data = db.child("users").child(user_id).get().val()
 
@@ -425,13 +434,13 @@ def adm_view_attendance():
     has_city_permission = city in user_data.get('cities', [])
 
     if not (is_admin or has_city_permission):
-        return "Você não tem permissão para acessar registros desta cidade."
+        return "VocÃª nÃ£o tem permissÃ£o para acessar registros desta cidade."
 
-    # Converter a data fornecida para ano, mês e dia
+    # Converter a data fornecida para ano, mÃªs e dia
     try:
         date = datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
-        return "Formato de data inválido."
+        return "Formato de data invÃ¡lido."
 
     year = str(date.year)
     month = f"{date.month:02d}"
@@ -462,7 +471,7 @@ def view_all_attendances():
 
             attendance_data = db.child("attendance_records").get().val() or {}
 
-            # Dicionário para agrupar atendimentos por user_id
+            # DicionÃ¡rio para agrupar atendimentos por user_id
             grouped_records = defaultdict(list)
 
             for city, years in attendance_data.items():
@@ -476,7 +485,7 @@ def view_all_attendances():
                                 user_id = attendance_info.get('user_id')
                                 
                                 if user_id:
-                                    # Obtém o nome do usuário baseado no user_id
+                                    # ObtÃ©m o nome do usuÃ¡rio baseado no user_id
                                     user_name = User.get_name(user_id)
 
                                     record = {
@@ -485,10 +494,10 @@ def view_all_attendances():
                                         **attendance_info
                                     }
                                     
-                                    # Agrupa pelo nome do usuário
+                                    # Agrupa pelo nome do usuÃ¡rio
                                     grouped_records[user_name].append(record)
                                 else:
-                                    # Se user_id não estiver presente, continue ou log um erro
+                                    # Se user_id nÃ£o estiver presente, continue ou log um erro
                                     print(f"User ID ausente para o atendimento {attendance_id}")
 
             return render_template('view_all_attendances.html', grouped_records=grouped_records, selected_date=selected_date)
@@ -503,19 +512,19 @@ def vincular_tecnico():
         tecnico_id = request.form['tecnico']
         novas_cidades = set(request.form.getlist('cidades'))  # Recebe lista de cidades selecionadas
 
-        # Recuperar as cidades atualmente vinculadas ao técnico
+        # Recuperar as cidades atualmente vinculadas ao tÃ©cnico
         tecnico_data = db.child("users").child(tecnico_id).get().val()
         cidades_atuais = set(tecnico_data.get('cities', []))
 
         # Combinar as cidades atuais com as novas
         cidades_atualizadas = list(cidades_atuais.union(novas_cidades))
 
-        # Atualizar as cidades no banco de dados para o técnico selecionado
+        # Atualizar as cidades no banco de dados para o tÃ©cnico selecionado
         db.child("users").child(tecnico_id).update({"cities": cidades_atualizadas})
 
         return redirect(url_for('vincular_tecnico'))
 
-    # Carregar todos os técnicos e cidades disponíveis
+    # Carregar todos os tÃ©cnicos e cidades disponÃ­veis
     all_users = db.child("users").get().val() or {}
     tecnicos = {uid: user for uid, user in all_users.items() if user['role'] == 'tecnico'}
     
@@ -536,8 +545,8 @@ def verifica_agenda():
     date_firebase = datetime.strptime(date_str, '%Y-%m-%d')
 
     year = str(date_firebase.year)
-    month = f"{date_firebase.month:02d}"  # Garantir que o mês tenha dois dígitos
-    day = f"{date_firebase.day:02d}"  # Garantir que o dia tenha dois dígitos
+    month = f"{date_firebase.month:02d}"  # Garantir que o mÃªs tenha dois dÃ­gitos
+    day = f"{date_firebase.day:02d}"  # Garantir que o dia tenha dois dÃ­gitos
 
     # Combine date and time to create datetime objects
     start_datetime = datetime.strptime(f"{date} {start_time}", '%Y-%m-%d %H:%M')
@@ -557,11 +566,11 @@ def verifica_agenda():
 
             # Check for overlapping times
             if not (end_datetime <= os_start or start_datetime >= os_end):
-                print(f"O técnico já possui uma OS agendada nesse horário.")
-                return jsonify({'status': 'conflict', 'message': 'O técnico já possui uma OS agendada nesse horário.'}), 400
+                print(f"O tÃ©cnico jÃ¡ possui uma OS agendada nesse horÃ¡rio.")
+                return jsonify({'status': 'conflict', 'message': 'O tÃ©cnico jÃ¡ possui uma OS agendada nesse horÃ¡rio.'}), 400
             
 
-    return jsonify({'status': 'success', 'message': 'Horário livre'}), 200
+    return jsonify({'status': 'success', 'message': 'HorÃ¡rio livre'}), 200
 
 @app.route('/gerar_os', methods=['POST'])
 def gerar_os():
@@ -633,8 +642,8 @@ def gerar_os():
     date = datetime.strptime(date_str, '%Y-%m-%d')
 
     year = str(date.year)
-    month = f"{date.month:02d}"  # Garantir que o mês tenha dois dígitos
-    day = f"{date.day:02d}"  # Garantir que o dia tenha dois dígitos
+    month = f"{date.month:02d}"  # Garantir que o mÃªs tenha dois dÃ­gitos
+    day = f"{date.day:02d}"  # Garantir que o dia tenha dois dÃ­gitos
 
     if newprice != "0.00":
 
@@ -675,7 +684,7 @@ def view_schedule():
         try:
             date = datetime.strptime(date_str, '%Y-%m-%d')
         except ValueError:
-            return "Formato de data inválido."
+            return "Formato de data invÃ¡lido."
 
         year = str(date.year)
         month = f"{date.month:02d}"
@@ -713,7 +722,7 @@ def consulta_os_atendente():
 
     user_id = session['user']
 
-    # Carregar as cidades vinculadas ao usuário
+    # Carregar as cidades vinculadas ao usuÃ¡rio
     user_data = db.child("users").child(user_id).get().val()
     cities = user_data.get('cities', [])
 
@@ -726,27 +735,27 @@ def view_schedule_atendente():
     date_str = request.args.get('date')
 
     if not city or not date_str:
-        return "Cidade ou data não fornecida."
+        return "Cidade ou data nÃ£o fornecida."
 
-    # Verifique se o usuário tem permissão para acessar esta cidade
+    # Verifique se o usuÃ¡rio tem permissÃ£o para acessar esta cidade
     user_id = session['user']
     user_data = db.child("users").child(user_id).get().val()
 
     if city not in user_data.get('cities', []):
-        return "Você não tem permissão para acessar registros desta cidade."
+        return "VocÃª nÃ£o tem permissÃ£o para acessar registros desta cidade."
 
-    # Converter a data fornecida para ano, mês e dia
+    # Converter a data fornecida para ano, mÃªs e dia
     try:
         date = datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
-        return "Formato de data inválido."
+        return "Formato de data invÃ¡lido."
 
     
     year = str(date.year)
     month = f"{date.month:02d}"
     day = f"{date.day:02d}"
     
-    # Obtenha o ID do técnico logado
+    # Obtenha o ID do tÃ©cnico logado
     tecnico_id = session['user']
     
     
@@ -786,18 +795,18 @@ def reagendar_os():
     start_datetime = datetime.strptime(f"{new_date} {start_time}", '%Y-%m-%d %H:%M')
     end_datetime = datetime.strptime(f"{new_date} {end_time}", '%Y-%m-%d %H:%M')
 
-    # Define o fuso horário de São Paulo
+    # Define o fuso horÃ¡rio de SÃ£o Paulo
     sao_paulo_tz = pytz.timezone('America/Sao_Paulo')
     now_in_sao_paulo = datetime.now(sao_paulo_tz)
 
-    # Obtém o timestamp atual
+    # ObtÃ©m o timestamp atual
     timestamp = now_in_sao_paulo.timestamp()
 
-    # Tenta converter a data antiga para objetos ano, mês e dia
+    # Tenta converter a data antiga para objetos ano, mÃªs e dia
     try:
         date = datetime.strptime(old_date, '%Y-%m-%d')
     except ValueError:
-        return "Formato de data inválido."
+        return "Formato de data invÃ¡lido."
 
     year = str(date.year)
     month = f"{date.month:02d}"
@@ -814,11 +823,11 @@ def reagendar_os():
         get_os["timestamp"] = timestamp
         get_os["tecnico_id"] = tecnico_id
 
-        # Tenta converter a nova data para ano, mês e dia
+        # Tenta converter a nova data para ano, mÃªs e dia
         try:
             date = datetime.strptime(new_date, '%Y-%m-%d')
         except ValueError:
-            return "Formato de data inválido."
+            return "Formato de data invÃ¡lido."
 
         year = str(date.year)
         month = f"{date.month:02d}"
@@ -834,10 +843,10 @@ def reagendar_os():
 
 @app.route('/finalizar_os', methods=['POST'])
 def finalizar_os():
-    # Recebe os dados enviados pelo formulário
+    # Recebe os dados enviados pelo formulÃ¡rio
     data = request.json
    
-    # Inicializa as variáveis de categorização
+    # Inicializa as variÃ¡veis de categorizaÃ§Ã£o
     status_pagamento = None
     detalhes_pagamento = {}
     numero_os = data.get('os_numero')
@@ -854,11 +863,11 @@ def finalizar_os():
     
     create_paymment = {}
 
-    '''# Tenta converter a nova data para ano, mês e dia
+    '''# Tenta converter a nova data para ano, mÃªs e dia
     try:
             date_firebase = datetime.strptime(os_date, '%Y-%m-%d')
     except ValueError:
-            return "Formato de data inválido."
+            return "Formato de data invÃ¡lido."
 
     year = str(date_firebase.year)
     month = f"{date_firebase.month:02d}"
@@ -1054,30 +1063,30 @@ def listar_pendentes_tecnico():
     if 'user' not in session:
         return redirect(url_for('login'))
 
-    tecnico_id = session['user']  # ID do técnico logado
+    tecnico_id = session['user']  # ID do tÃ©cnico logado
     now = datetime.now()
     ano_atual = now.strftime("%Y")
     mes_atual = now.strftime("%m")
 
-    # Receber ano e mês do formulário ou usar os valores padrão (ano e mês atuais)
+    # Receber ano e mÃªs do formulÃ¡rio ou usar os valores padrÃ£o (ano e mÃªs atuais)
     if request.method == 'POST':
         ano = request.form.get('ano', ano_atual)
         mes = request.form.get('mes', mes_atual)
     else:
         ano = ano_atual  # Ano atual
-        mes = mes_atual  # Mês atual
+        mes = mes_atual  # MÃªs atual
     all_pendding_transactions = {}
-    # Obter as cidades associadas ao técnico
+    # Obter as cidades associadas ao tÃ©cnico
     cities = db.child('users').child(session['user']).child('cities').get().val()
 
     
 
-    # Buscar ordens de serviço pendentes para cada cidade
+    # Buscar ordens de serviÃ§o pendentes para cada cidade
     for city in cities:
         pendding_transactions_path = f"wallet/{city}/{ano}/{mes}"
         paymments_pendding = db.child(pendding_transactions_path).get().val() or {}
 
-        # Agora, em vez de usar `update`, fazemos uma combinação manual para não sobrescrever
+        # Agora, em vez de usar `update`, fazemos uma combinaÃ§Ã£o manual para nÃ£o sobrescrever
         for day, day_data in paymments_pendding.items():
             if day not in all_pendding_transactions:
                 all_pendding_transactions[day] = day_data
@@ -1088,19 +1097,19 @@ def listar_pendentes_tecnico():
                         all_pendding_transactions[day]['transactions'] = {}
                     if 'pendding' not in all_pendding_transactions[day]['transactions']:
                         all_pendding_transactions[day]['transactions']['pendding'] = {}
-                    # Mesclar as transações do dia
+                    # Mesclar as transaÃ§Ãµes do dia
                     all_pendding_transactions[day]['transactions']['pendding'].update(day_data['transactions']['pendding'])
 
     pendding_transactions = {}
 
-    # Percorrer os dias e filtrar as transações pendentes do técnico logado
+    # Percorrer os dias e filtrar as transaÃ§Ãµes pendentes do tÃ©cnico logado
     for day, day_data in all_pendding_transactions.items():
         pendding = day_data.get('transactions', {}).get('pendding', {})
         for trans_id, trans_data in pendding.items():
             if trans_data.get('tecnico_id') == tecnico_id:
                 pendding_transactions[trans_id] = trans_data
 
-    # Renderizar as transações filtradas
+    # Renderizar as transaÃ§Ãµes filtradas
     return render_template('paymments_pendding_tecnico.html', transactions=pendding_transactions, ano=ano, mes=mes)
 
 '''
@@ -1110,33 +1119,33 @@ def extrato_tecnico():
     if 'user' not in session:
         return redirect(url_for('login'))
 
-    tecnico_id = session['user']  # ID do técnico logado
+    tecnico_id = session['user']  # ID do tÃ©cnico logado
     now = datetime.now()
     ano_atual = now.strftime("%Y")
     mes_atual = now.strftime("%m")
 
-    # Receber ano e mês do formulário ou usar os valores padrão (ano e mês atuais)
+    # Receber ano e mÃªs do formulÃ¡rio ou usar os valores padrÃ£o (ano e mÃªs atuais)
     if request.method == 'POST':
         ano = request.form.get('ano', ano_atual)
         mes = request.form.get('mes', mes_atual)
     else:
         ano = ano_atual  # Ano atual
-        mes = mes_atual  # Mês atual
+        mes = mes_atual  # MÃªs atual
 
     participation = User_Wallet.get_participation(id=tecnico_id)
     participation_empresa = 100 - participation
     
-    # Obter as cidades associadas ao técnico
+    # Obter as cidades associadas ao tÃ©cnico
     cities = db.child('users').child(session['user']).child('cities').get().val()
 
     grouped_transactions = {}
 
-    # Buscar ordens de serviço para cada cidade
+    # Buscar ordens de serviÃ§o para cada cidade
     for city in cities:
         success_transactions_path = f"wallet/{city}/{ano}/{mes}"
         paymments_success = db.child(success_transactions_path).get().val() or {}
 
-        # Agrupar as transações por dia
+        # Agrupar as transaÃ§Ãµes por dia
         for day, day_data in paymments_success.items():
             success = day_data.get('transactions', {}).get('success', {})
             if day not in grouped_transactions:
@@ -1149,7 +1158,7 @@ def extrato_tecnico():
                 }
             for trans_id, trans_data in success.items():
                 if trans_data.get('tecnico_id') == tecnico_id:
-                    amount = float(trans_data.get('amount', 0))  # Pega o valor da transação
+                    amount = float(trans_data.get('amount', 0))  # Pega o valor da transaÃ§Ã£o
                     grouped_transactions[day]['transactions'].append({
                         'trans_id': trans_id,
                         'data': trans_data,
@@ -1158,22 +1167,22 @@ def extrato_tecnico():
                     grouped_transactions[day]['total_amount'] += amount  # Soma o valor ao total do dia
 
 
-    # Obter os custos (combustível, manutenção, pedágio) do mês
+    # Obter os custos (combustÃ­vel, manutenÃ§Ã£o, pedÃ¡gio) do mÃªs
     costs_path = f"users/{session['user']}/wallet/costs/{ano}/{mes}"
     month_costs_data = db.child(costs_path).get().val() or {}
 
-    # Somar os custos de todos os dias do mês
+    # Somar os custos de todos os dias do mÃªs
     for day, costs_data in month_costs_data.items():
         total_costs = 0.0
         
-        # Inicializar variáveis para custos individuais
+        # Inicializar variÃ¡veis para custos individuais
         combustivel = 0.0
         manutencao = 0.0
         pedagio = 0.0
         reparo = 0.0
         outros = 0.0
         
-        # Percorrer os dados de custo para o dia específico
+        # Percorrer os dados de custo para o dia especÃ­fico
         for cost_id, cost_items in costs_data.items():
             if isinstance(cost_items, dict):
                 combustivel = float(cost_items.get('combustivel', '0.0'))
@@ -1186,7 +1195,7 @@ def extrato_tecnico():
                 total_costs += combustivel + manutencao + pedagio + reparo + outros
 
                
-        # Se houver transações agrupadas para esse dia, atualizar com os custos
+        # Se houver transaÃ§Ãµes agrupadas para esse dia, atualizar com os custos
 
 
         if day in grouped_transactions:
@@ -1204,7 +1213,7 @@ def extrato_tecnico():
             grouped_transactions[day]['empresa'] = ((grouped_transactions[day]['balance'] /100) * participation_empresa)
 
 
-    # Renderizar as transações agrupadas por dia, incluindo os custos e o saldo restante
+    # Renderizar as transaÃ§Ãµes agrupadas por dia, incluindo os custos e o saldo restante
     return render_template('extrato_tecnico.html', grouped_transactions=grouped_transactions, ano=ano, mes=mes)
 
 '''
@@ -1221,11 +1230,11 @@ def extrato_tecnico():
     tecnico_id = session['user']
     now = datetime.now()
 
-    # Receber a data do formulário ou usar o valor padrão (dia atual)
+    # Receber a data do formulÃ¡rio ou usar o valor padrÃ£o (dia atual)
     if request.method == 'POST':
         data = request.form.get('data', now.strftime("%Y-%m-%d"))
     else:
-        data = now.strftime("%Y-%m-%d")  # Data atual como padrão
+        data = now.strftime("%Y-%m-%d")  # Data atual como padrÃ£o
 
     ano, mes, dia = data.split('-')
 
@@ -1238,12 +1247,12 @@ def extrato_tecnico():
 
     grouped_transactions = {}
 
-    # Buscar ordens de serviço para a data selecionada
+    # Buscar ordens de serviÃ§o para a data selecionada
     for city in cities:
         success_transactions_path = f"wallet/{city}/{ano}/{mes}"
         paymments_success = db.child(success_transactions_path).get().val() or {}
 
-        # Filtrar transações para o dia específico
+        # Filtrar transaÃ§Ãµes para o dia especÃ­fico
         if dia in paymments_success:
             day_data = paymments_success[dia]
             success = day_data.get('transactions', {}).get('success', {})
@@ -1265,20 +1274,20 @@ def extrato_tecnico():
                     })
                     grouped_transactions[dia]['total_amount'] += amount
 
-    # Buscar os custos do dia específico
+    # Buscar os custos do dia especÃ­fico
     #costs_path = f"users/{session['user']}/wallet/costs/{ano}/{mes}"
     #month_costs_data = db.child(costs_path).get().val() or {}
 
-    # Garantir que o dia está nos custos recuperados
-    #costs_data = month_costs_data.get(dia, {})  # Retorna um dicionário vazio se o dia não existir
+    # Garantir que o dia estÃ¡ nos custos recuperados
+    #costs_data = month_costs_data.get(dia, {})  # Retorna um dicionÃ¡rio vazio se o dia nÃ£o existir
     
  
 
     #if costs_data:
-        # Acessar diretamente a única chave no dicionário
-        #daily_costs = list(costs_data.values())[0]  # Acessa o primeiro (e único) valor do dicionário
+        # Acessar diretamente a Ãºnica chave no dicionÃ¡rio
+        #daily_costs = list(costs_data.values())[0]  # Acessa o primeiro (e Ãºnico) valor do dicionÃ¡rio
 
-        # Extrair os valores dos custos, assumindo 0.0 se o campo não existir
+        # Extrair os valores dos custos, assumindo 0.0 se o campo nÃ£o existir
     combustivel = 0.0
     manutencao = 0.0
     pedagio = 0.0
@@ -1287,7 +1296,7 @@ def extrato_tecnico():
     total_costs = combustivel + manutencao + pedagio + reparo + outros
 
 
-        # Atribuir os valores ao dicionário de transações agrupadas
+        # Atribuir os valores ao dicionÃ¡rio de transaÃ§Ãµes agrupadas
     if dia in grouped_transactions:
             grouped_transactions[dia]['combustivel'] = combustivel
             grouped_transactions[dia]['manutencao'] = manutencao
@@ -1299,7 +1308,7 @@ def extrato_tecnico():
             grouped_transactions[dia]['tecnico'] = (grouped_transactions[dia]['balance'] / 100) * participation
             grouped_transactions[dia]['tecnico_total'] = grouped_transactions[dia]['tecnico']
             grouped_transactions[dia]['empresa'] = (grouped_transactions[dia]['balance'] / 100) * participation_empresa
-            # Passar a variável 'now' para o template
+            # Passar a variÃ¡vel 'now' para o template
 
     print(grouped_transactions)
     return render_template('extrato_tecnico.html', grouped_transactions=grouped_transactions, data=data, now=now)
@@ -1339,19 +1348,19 @@ def fechar_dia_tecnico():
 
             if item == 'manutencao':
 
-                category = 'Manutenção'
-                especie = 'Veículo'
+                category = 'ManutenÃ§Ã£o'
+                especie = 'VeÃ­culo'
 
             elif item == 'combustivel':
                 category = 'Transporte'
-                especie = 'Combustível'
+                especie = 'CombustÃ­vel'
             
             elif item == 'pedagio':
                 category = 'Transporte'
-                especie = 'Pedágio'
+                especie = 'PedÃ¡gio'
             
             elif item == 'reparo':
-                category = 'Manutenção'
+                category = 'ManutenÃ§Ã£o'
                 especie = 'Reparo'
 
             elif item == 'outros':
@@ -1389,11 +1398,11 @@ def adm_consulta_extrato():
 def adm_extrato_tecnico():
     date_str = request.args.get('date')
 
-    # Converter a data fornecida para ano, mês e dia
+    # Converter a data fornecida para ano, mÃªs e dia
     try:
         date = datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
-        return "Formato de data inválido."
+        return "Formato de data invÃ¡lido."
     
     year = str(date.year)
     month = f"{date.month:02d}"
@@ -1402,7 +1411,7 @@ def adm_extrato_tecnico():
     # Obter todos os dados de wallet do Firebase
     wallet_data = db.child("wallet").get().val() or {}
 
-    # Dicionário para agrupar transações, somar os amounts e os custos por técnico
+    # DicionÃ¡rio para agrupar transaÃ§Ãµes, somar os amounts e os custos por tÃ©cnico
     tecnico_transactions = defaultdict(lambda: {'transactions': [], 'total_amount': 0.0, 'costs': {'combustivel': 0.0, 'manutencao': 0.0, 'pedagio': 0.0, 'reparo': 0.0, 'outros': 0.0}, 'valor_final': 0.0})
 
     # Iterar sobre as cidades na estrutura do Firebase
@@ -1412,16 +1421,16 @@ def adm_extrato_tecnico():
             if month in months:
                 days = months[month]
                 if day in days:
-                    # Obter as transações do dia específico
+                    # Obter as transaÃ§Ãµes do dia especÃ­fico
                     transactions = days[day].get("transactions", {}).get("success", {})
 
-                    # Agrupar transações pelo nome do técnico e somar os amounts
+                    # Agrupar transaÃ§Ãµes pelo nome do tÃ©cnico e somar os amounts
                     for transaction_id, transaction_info in transactions.items():
                         tecnico_id = transaction_info.get('tecnico_id')
                         if tecnico_id:
-                            name_tecnico = User.get_name(tecnico_id)  # Obter o nome do técnico
+                            name_tecnico = User.get_name(tecnico_id)  # Obter o nome do tÃ©cnico
                         
-                            # Buscar os custos do técnico (apenas uma vez por técnico)
+                            # Buscar os custos do tÃ©cnico (apenas uma vez por tÃ©cnico)
                             if 'costs_retrieved' not in tecnico_transactions[name_tecnico]:
                                 costs_path = f"users/{tecnico_id}/wallet/costs/{year}/{month}/{day}"
                                 day_costs_data = db.child(costs_path).get().val() or {}
@@ -1441,13 +1450,13 @@ def adm_extrato_tecnico():
                                 # Marcar que os custos foram buscados
                                 tecnico_transactions[name_tecnico]['costs_retrieved'] = True
                         
-                            # Somar o valor da transação ao total do técnico
+                            # Somar o valor da transaÃ§Ã£o ao total do tÃ©cnico
                             amount = float(transaction_info.get('amount', 0))
                             tecnico_transactions[name_tecnico]['transactions'].append(transaction_info)
                             tecnico_transactions[name_tecnico]['total_amount'] += amount
                         transaction_info['city'] = city
 
-    # Calcular o valor final para cada técnico (total_amount - custos)
+    # Calcular o valor final para cada tÃ©cnico (total_amount - custos)
     for name_tecnico, data in tecnico_transactions.items():
         total_costs = data['costs']['combustivel'] + data['costs']['manutencao'] + data['costs']['pedagio'] + data['costs']['reparo'] + data['costs']['outros']
         data['valor_final'] = data['total_amount'] - total_costs
@@ -1491,7 +1500,7 @@ def deletar_os():
     if 'user' not in session:
         return redirect(url_for('login'))
     
-    # Obtendo os dados do formulário
+    # Obtendo os dados do formulÃ¡rio
     city = request.form.get('city')
     old_id = request.form.get("idRecord")
     motivo = request.form.get("deleteOsMotivo")
@@ -1502,7 +1511,7 @@ def deletar_os():
     try:
         date = datetime.strptime(date, '%Y-%m-%d')
     except ValueError:
-        return "Formato de data inválido."
+        return "Formato de data invÃ¡lido."
     
     year = str(date.year)
     month = f"{date.month:02d}"
@@ -1512,9 +1521,9 @@ def deletar_os():
     data = db.child("ordens_servico").child(city).child(year).child(month).child(day).child(old_id).get().val()
 
     if not data:
-        return "Dados da OS não encontrados."
+        return "Dados da OS nÃ£o encontrados."
 
-    # Obter a data e hora atual com o fuso horário de São Paulo
+    # Obter a data e hora atual com o fuso horÃ¡rio de SÃ£o Paulo
     fuso_horario_sp = pytz.timezone('America/Sao_Paulo')
     data_atual_sp = datetime.now(fuso_horario_sp)
     date_str = data_atual_sp.strftime('%Y-%m-%d')
@@ -1523,13 +1532,13 @@ def deletar_os():
     try:
         date_canceled = datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
-        return "Formato de data inválido."
+        return "Formato de data invÃ¡lido."
     
     ano = str(date_canceled.year)
     mes = f"{date_canceled.month:02d}"
     dia = f"{date_canceled.day:02d}"
 
-    # Atualizando o dicionário com o motivo do cancelamento
+    # Atualizando o dicionÃ¡rio com o motivo do cancelamento
     data['motivo_cancelamento'] = motivo
 
     sao_paulo_tz = pytz.timezone('America/Sao_Paulo')
@@ -1564,36 +1573,37 @@ def adm_lista_paymments_pendentes():
     ano_atual = now.strftime("%Y")
     mes_atual = now.strftime("%m")
 
-    # Receber ano e mês do formulário ou usar os valores padrão (ano e mês atuais)
+    # Receber ano e mÃªs do formulÃ¡rio ou usar os valores padrÃ£o (ano e mÃªs atuais)
     if request.method == 'POST':
         ano = request.form.get('ano', ano_atual)
         mes = request.form.get('mes', mes_atual)
     else:
         ano = ano_atual  # Ano atual
-        mes = mes_atual  # Mês atual
+        mes = mes_atual  # MÃªs atual
 
     all_pendding_transactions = []
 
     cities = Cities.get_cities()
 
-    # Buscar ordens de serviço pendentes para cada cidade
+    # Buscar ordens de serviÃ§o pendentes para cada cidade
     for city in cities.values():
         pendding_transactions_path = f"wallet/{city}/{ano}/{mes}"
         paymments_pendding = db.child(pendding_transactions_path).get().val() or {}
 
         # Iterar sobre cada dia
         for day_data in paymments_pendding.values():
-            # Verificar se há transações pendentes no dia
+            # Verificar se hÃ¡ transaÃ§Ãµes pendentes no dia
             if 'transactions' in day_data and 'pendding' in day_data['transactions']:
                 for transaction_id, transaction_data in day_data['transactions']['pendding'].items():
-                    # Adicionar o ID da transação ao dicionário
+                    # Adicionar o ID da transaÃ§Ã£o ao dicionÃ¡rio
                     name = User.get_name(id=transaction_data['tecnico_id'])
                     transaction_data['transaction_id'] = transaction_id
                     transaction_data['name_tecnico'] = name
                     all_pendding_transactions.append(transaction_data)
 
-    # Renderizar as transações pendentes
+    # Renderizar as transaÃ§Ãµes pendentes
     return render_template('adm_lista_pendentes.html', transactions=all_pendding_transactions, ano=ano, mes=mes)
+
 
 @app.route('/update_pendding', methods=['POST', 'GET'])
 def update_pendding():
@@ -1611,11 +1621,11 @@ def update_pendding():
    
     date_paymment = request.form.get('datePaymment')
 
-    # Tenta converter a nova data para ano, mês e dia
+    # Tenta converter a nova data para ano, mÃªs e dia
     try:
         date_firebase = datetime.strptime(os_date, '%Y-%m-%d')
     except ValueError:
-        return "Formato de data inválido."
+        return "Formato de data invÃ¡lido."
 
     year = str(date_firebase.year)
     month = f"{date_firebase.month:02d}"
@@ -1686,11 +1696,11 @@ def update_pendding_tecnico():
    
     date_paymment = request.form.get('datePaymment')
 
-    # Tenta converter a nova data para ano, mês e dia
+    # Tenta converter a nova data para ano, mÃªs e dia
     try:
         date_firebase = datetime.strptime(os_date, '%Y-%m-%d')
     except ValueError:
-        return "Formato de data inválido."
+        return "Formato de data invÃ¡lido."
 
     year = str(date_firebase.year)
     month = f"{date_firebase.month:02d}"
@@ -1748,7 +1758,7 @@ def adm_lista_os():
 
             attendance_data = db.child("ordens_servico").get().val() or {}
 
-            # Dicionário para agrupar atendimentos por user_id
+            # DicionÃ¡rio para agrupar atendimentos por user_id
             grouped_records = defaultdict(list)
 
             for city, years in attendance_data.items():
@@ -1772,10 +1782,10 @@ def adm_lista_os():
                                         **attendance_info
                                     }
                                     
-                                    # Agrupa pelo nome do usuário
+                                    # Agrupa pelo nome do usuÃ¡rio
                                     grouped_records[user_id].append(record)
                                 else:
-                                    # Se user_id não estiver presente, continue ou log um erro
+                                    # Se user_id nÃ£o estiver presente, continue ou log um erro
                                     print(f"User ID ausente para o atendimento {attendance_id}")
 
             return render_template('adm_lista_os.html', grouped_records=grouped_records, selected_date=selected_date)
@@ -1788,24 +1798,44 @@ def relatorio():
    
     return render_template('relatorio.html')
 
+def _montar_info_tecnico():
+    """Busca os dados do tÃ©cnico logado no Firebase para o relatÃ³rio."""
+    tecnico_id = session['user']
+    tecnico_data = db.child('users').child(tecnico_id).get().val() or {}
+
+    return {
+        "nome_relatorio": tecnico_data.get("nome_relatorio", ""),
+        "cpf_cnpj": tecnico_data.get("cpf_cnpj", ""),
+        "assinatura": tecnico_data.get("assinatura", None)  # caso exista imagem salva
+    }
+
+
 @app.route('/relatorio_tecnico', methods=['GET', 'POST'])
 @check_roles(['tecnico'])
 def relatorio_tecnico():
     if 'user' not in session:
         return redirect(url_for('login'))
 
-    tecnico_id = session['user']
+    # Rota com assinatura digital avanÃ§ada (componente criptogrÃ¡fico)
+    return render_template(
+        'relatorio_tecnico.html',
+        tecnico=_montar_info_tecnico(),
+        signature_mode='avancada',
+    )
 
-    # Buscar dados do técnico no Firebase
-    tecnico_data = db.child('users').child(tecnico_id).get().val()
 
-    tecnico_info = {
-        "nome_relatorio": tecnico_data.get("nome_relatorio", ""),
-        "cpf_cnpj": tecnico_data.get("cpf_cnpj", ""),
-        "assinatura": tecnico_data.get("assinatura", None)  # caso exista imagem salva
-    }
-   
-    return render_template('relatorio_tecnico.html', tecnico=tecnico_info)
+@app.route('/relatorio_tecnico_classico', methods=['GET', 'POST'])
+@check_roles(['tecnico'])
+def relatorio_tecnico_classico():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    # Rota com o modelo de assinatura anterior (assinatura cursiva gerada)
+    return render_template(
+        'relatorio_tecnico.html',
+        tecnico=_montar_info_tecnico(),
+        signature_mode='classica',
+    )
 
 @app.route('/orcamento', methods=['GET', 'POST'])
 def orcamento():
@@ -1817,13 +1847,13 @@ def orcamento():
 def attendance_desempenho():
     id_atendente = session.get('user')  # ID do atendente logado
     if not id_atendente:
-        return redirect('/login')  # Redireciona se não estiver logado
+        return redirect('/login')  # Redireciona se nÃ£o estiver logado
 
     # Lista de meses para o select
     meses = [
         {"value": "01", "name": "Janeiro"},
         {"value": "02", "name": "Fevereiro"},
-        {"value": "03", "name": "Março"},
+        {"value": "03", "name": "MarÃ§o"},
         {"value": "04", "name": "Abril"},
         {"value": "05", "name": "Maio"},
         {"value": "06", "name": "Junho"},
@@ -1846,10 +1876,10 @@ def attendance_desempenho():
         selected_month = request.form.get('selected_month')
 
     if selected_month:
-        # Obtém os dados de atendimentos do Firebase
+        # ObtÃ©m os dados de atendimentos do Firebase
         attendance_data = db.child("attendance_records").get().val() or {}
 
-        # Filtra os registros para o atendente logado e o mês selecionado
+        # Filtra os registros para o atendente logado e o mÃªs selecionado
         for city, years in attendance_data.items():
             if str(year) in years:
                 months = years[str(year)]
@@ -1869,7 +1899,7 @@ def attendance_desempenho():
                                     daily_summary[day]["aguardando"] += 1
                                 daily_summary[day]["total"] += 1
 
-    # Atualiza os totais mensais fora do loop diário
+    # Atualiza os totais mensais fora do loop diÃ¡rio
     for day_summary in daily_summary.values():
         total_agendados += day_summary["agendados"]
         total_aguardando += day_summary["aguardando"]
@@ -1883,13 +1913,13 @@ def attendance_desempenho():
         round((total_aguardando / total_atendimentos) * 100 if total_atendimentos else 0, 2)
     )
 
-    # Converte o resumo diário para uma lista ordenada por dia
+    # Converte o resumo diÃ¡rio para uma lista ordenada por dia
     ordered_daily_summary = [
         {"day": f"{day}/{selected_month}/{year}", **summary}
         for day, summary in sorted(daily_summary.items())
     ]
 
-    # Obtém o nome do atendente logado
+    # ObtÃ©m o nome do atendente logado
     user_name = User.get_name(id_atendente)
 
     return render_template(
@@ -1911,15 +1941,15 @@ def attendance_desempenho():
 def bonus_attendant():
     id_user = session.get('user')
     if not id_user:
-        return redirect('/login')  # Redireciona para o login se não estiver logado
+        return redirect('/login')  # Redireciona para o login se nÃ£o estiver logado
 
     # Lista de anos e meses para os selects
     current_year = datetime.now().year
-    years = [current_year - i for i in range(5)]  # Últimos 5 anos
+    years = [current_year - i for i in range(5)]  # Ãšltimos 5 anos
     months = [
         {"value": "01", "name": "Janeiro"},
         {"value": "02", "name": "Fevereiro"},
-        {"value": "03", "name": "Março"},
+        {"value": "03", "name": "MarÃ§o"},
         {"value": "04", "name": "Abril"},
         {"value": "05", "name": "Maio"},
         {"value": "06", "name": "Junho"},
@@ -1944,7 +1974,7 @@ def bonus_attendant():
             # Obtem dados do Firebase
             data = db.child('users').child(id_user).child('wallet').child('credit_for_servide').child(selected_year).child(selected_month).get().val()
             if data:
-                # Converte os dados em uma lista para exibição e ajusta a data
+                # Converte os dados em uma lista para exibiÃ§Ã£o e ajusta a data
                 for key, value in data.items():
                     timestamp = value.get('timestamp')
                     if timestamp:
@@ -1991,14 +2021,14 @@ def apagar_transacao():
 def relatorio_cidade():
     id_user = session.get('user')
     if not id_user:
-        return redirect('/login')  # Redireciona para o login se não estiver logado
+        return redirect('/login')  # Redireciona para o login se nÃ£o estiver logado
     
     current_year = datetime.now().year
-    years = [current_year - i for i in range(5)]  # Últimos 5 anos
+    years = [current_year - i for i in range(5)]  # Ãšltimos 5 anos
     months = [
         {"value": "01", "name": "Janeiro"},
         {"value": "02", "name": "Fevereiro"},
-        {"value": "03", "name": "Março"},
+        {"value": "03", "name": "MarÃ§o"},
         {"value": "04", "name": "Abril"},
         {"value": "05", "name": "Maio"},
         {"value": "06", "name": "Junho"},
@@ -2055,7 +2085,7 @@ def get_city_data():
                     if channel:
                         channel_counts[channel] = channel_counts.get(channel, 0) + 1
 
-        # Processa dados de agendamento (ordens de serviço)
+        # Processa dados de agendamento (ordens de serviÃ§o)
         if data_schedule:
             for day, items in data_schedule.items():
                 for item_id, item in items.items():
@@ -2068,10 +2098,10 @@ def get_city_data():
                     obs = item.get("obs", "")
 
                     if service:
-                        # Contagem por serviço
+                        # Contagem por serviÃ§o
                         service_counts_agendado[service] = service_counts_agendado.get(service, 0) + 1
 
-                        # Soma de valores por serviço
+                        # Soma de valores por serviÃ§o
                         service_value_totals_agendado[service] = service_value_totals_agendado.get(service, 0) + price
 
                         # Lista detalhada de agendamentos
@@ -2086,12 +2116,12 @@ def get_city_data():
                         if service == "Retorno":
                             total_retorno += 1
 
-        # Cálculo do valor médio por serviço
+        # CÃ¡lculo do valor mÃ©dio por serviÃ§o
         for service, total_value in service_value_totals_agendado.items():
             count = service_counts_agendado.get(service, 0)
             service_value_averages_agendado[service] = round(total_value / count, 2) if count else 0
 
-        # Cálculo de porcentagens
+        # CÃ¡lculo de porcentagens
         porcentagem_agendado = round((total_agendado / total) * 100 if total else 0, 2)
 
         service_percentages = {
@@ -2142,17 +2172,17 @@ def adm_schedule():
 def get_technician_schedules():
     date_str = request.args.get('date')
 
-    # Validação da data
+    # ValidaÃ§Ã£o da data
     try:
         date = datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
-        return jsonify({"error": "Formato de data inválido."}), 400
+        return jsonify({"error": "Formato de data invÃ¡lido."}), 400
 
     year = str(date.year)
     month = f"{date.month:02d}"
     day = f"{date.day:02d}"
 
-    # Obtenha todos os técnicos registrados no sistema
+    # Obtenha todos os tÃ©cnicos registrados no sistema
     users = db.child("users").get().val()
     user_role = 'tecnico'
     technicians = {user_id: user for user_id, user in users.items() if user.get('role') == user_role}
@@ -2167,24 +2197,24 @@ def get_technician_schedules():
 
     try:
         for city in cities:
-            # Buscar agendamentos na cidade para a data específica
+            # Buscar agendamentos na cidade para a data especÃ­fica
             data_schedule = db.child("ordens_servico").child(city).child(year).child(month).child(day).get().val()
             if data_schedule:
                 for order_id, order_data in data_schedule.items():
                     technician_id = order_data.get('tecnico_id')
                     
-                    # Verifica se o técnico existe e acumula os dados
+                    # Verifica se o tÃ©cnico existe e acumula os dados
                     if technician_id in technician_schedules:
                         order_data['os_id'] = order_id
                         order_data['data'] = date_str
                         technician_schedules[technician_id].append(order_data)
                     else:
-                        print(f"ID do técnico {technician_id} não encontrado em technicians.")
+                        print(f"ID do tÃ©cnico {technician_id} nÃ£o encontrado em technicians.")
         
-        # Substituir IDs pelo nome e retornar apenas técnicos com agendamentos
+        # Substituir IDs pelo nome e retornar apenas tÃ©cnicos com agendamentos
         formatted_schedules = {}
         for tech_id, schedules in technician_schedules.items():
-            if schedules:  # Apenas incluir técnicos com agendamentos
+            if schedules:  # Apenas incluir tÃ©cnicos com agendamentos
                 formatted_schedules[technicians[tech_id]['name']] = schedules
         
         return jsonify(formatted_schedules), 200
@@ -2235,14 +2265,14 @@ def perfil(id):
 @app.route('/user_remove_city', methods=['POST'])
 def user_remove_city():
     if 'user' not in session:
-        return jsonify({'success': False, 'error': 'Usuário não autenticado'}), 401
+        return jsonify({'success': False, 'error': 'UsuÃ¡rio nÃ£o autenticado'}), 401
 
     data = request.get_json()
     index = data.get('index')
     city_name = data.get('city')
 
     if index is None or not city_name:
-        return jsonify({'success': False, 'error': 'Dados inválidos'}), 400
+        return jsonify({'success': False, 'error': 'Dados invÃ¡lidos'}), 400
 
     user_id = data.get('id')
 
@@ -2250,14 +2280,14 @@ def user_remove_city():
         cities = db.child("users").child(user_id).child('cities').get().val()
 
         if not cities or not isinstance(cities, list):
-            return jsonify({'success': False, 'error': 'Lista de cidades não encontrada ou inválida'}), 404
+            return jsonify({'success': False, 'error': 'Lista de cidades nÃ£o encontrada ou invÃ¡lida'}), 404
 
         if 0 <= index < len(cities) and cities[index] == city_name:
             cities.pop(index)
             db.child("users").child(user_id).update({"cities": cities})
             return jsonify({'success': True})
         else:
-            return jsonify({'success': False, 'error': 'Cidade não encontrada ou não corresponde ao índice'}), 400
+            return jsonify({'success': False, 'error': 'Cidade nÃ£o encontrada ou nÃ£o corresponde ao Ã­ndice'}), 400
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -2265,16 +2295,16 @@ def user_remove_city():
 @app.route('/user_add_city', methods=['POST'])
 def user_add_city():
     if 'user' not in session:
-        return jsonify({'success': False, 'error': 'Usuário não autenticado'}), 401
+        return jsonify({'success': False, 'error': 'UsuÃ¡rio nÃ£o autenticado'}), 401
 
     data = request.get_json()
     city = data.get('city')
     user_id = data.get('id')
 
     if not city:
-        return jsonify({'success': False, 'error': 'Cidade não fornecida'}), 400
+        return jsonify({'success': False, 'error': 'Cidade nÃ£o fornecida'}), 400
     if not user_id:
-        return jsonify({'success': False, 'error': 'ID do usuário não fornecido'}), 400
+        return jsonify({'success': False, 'error': 'ID do usuÃ¡rio nÃ£o fornecido'}), 400
 
     try:
         cities = db.child("users").child(user_id).child('cities').get().val()
@@ -2283,7 +2313,7 @@ def user_add_city():
             cities = []
 
         if city in cities:
-            return jsonify({'success': False, 'error': 'Cidade já adicionada'}), 400
+            return jsonify({'success': False, 'error': 'Cidade jÃ¡ adicionada'}), 400
 
         cities.append(city)
         db.child("users").child(user_id).update({"cities": cities})
@@ -2296,14 +2326,14 @@ def user_add_city():
 @app.route('/user_update_percentage', methods=['POST'])
 def user_update_percentage():
     if 'user' not in session:
-        return jsonify({'success': False, 'error': 'Usuário não autenticado'}), 401
+        return jsonify({'success': False, 'error': 'UsuÃ¡rio nÃ£o autenticado'}), 401
 
     data = request.get_json()
     user_id = data.get('id')
     percentage = data.get('percentage')
 
     if not user_id or percentage is None:
-        return jsonify({'success': False, 'error': 'Dados inválidos'}), 400
+        return jsonify({'success': False, 'error': 'Dados invÃ¡lidos'}), 400
 
     try:
         # Atualiza ou cria o campo 'percentage'
@@ -2315,14 +2345,14 @@ def user_update_percentage():
 @app.route('/user_update_tipo', methods=['POST'])
 def user_update_tipo():
     if 'user' not in session:
-        return jsonify({'success': False, 'error': 'Usuário não autenticado'}), 401
+        return jsonify({'success': False, 'error': 'UsuÃ¡rio nÃ£o autenticado'}), 401
 
     data = request.get_json()
     user_id = data.get('id')
     role = data.get('role')
 
     if not user_id or role is None:
-        return jsonify({'success': False, 'error': 'Dados inválidos'}), 400
+        return jsonify({'success': False, 'error': 'Dados invÃ¡lidos'}), 400
 
     try:
         # Atualiza ou cria o campo 'percentage'
@@ -2334,14 +2364,14 @@ def user_update_tipo():
 @app.route('/user_update_cpf_cnpj', methods=['POST'])
 def user_update_cpf_cnpj():
     if 'user' not in session:
-        return jsonify({'success': False, 'error': 'Usuário não autenticado'}), 401
+        return jsonify({'success': False, 'error': 'UsuÃ¡rio nÃ£o autenticado'}), 401
 
     data = request.get_json()
     user_id = data.get('id')
     cpf_cnpj = data.get('cpfcnpj')
 
     if not user_id or cpf_cnpj is None:
-        return jsonify({'success': False, 'error': 'Dados inválidos'}), 400
+        return jsonify({'success': False, 'error': 'Dados invÃ¡lidos'}), 400
 
     try:
         # Atualiza ou cria o campo 'percentage'
@@ -2354,14 +2384,14 @@ def user_update_cpf_cnpj():
 @app.route('/user_update_nome_relatorio', methods=['POST'])
 def user_update_nome_relatorio():
     if 'user' not in session:
-        return jsonify({'success': False, 'error': 'Usuário não autenticado'}), 401
+        return jsonify({'success': False, 'error': 'UsuÃ¡rio nÃ£o autenticado'}), 401
 
     data = request.get_json()
     user_id = data.get('id')
     nome_relatorio = data.get('nome_relatorio')
 
     if not user_id or nome_relatorio is None:
-        return jsonify({'success': False, 'error': 'Dados inválidos'}), 400
+        return jsonify({'success': False, 'error': 'Dados invÃ¡lidos'}), 400
 
     try:
         # Atualiza ou cria o campo 'percentage'
@@ -2440,7 +2470,7 @@ def cancel_transaction_pendding():
     try:
         date = datetime.strptime(date_os, '%Y-%m-%d')
     except ValueError:
-        return jsonify({"error": "Formato de data inválido."}), 400
+        return jsonify({"error": "Formato de data invÃ¡lido."}), 400
 
     year = str(date.year)
     month = f"{date.month:02d}"
@@ -2453,7 +2483,7 @@ def cancel_transaction_pendding():
         db.child("wallet").child(city).child(year).child(month).child(day).child('transactions').child('pendding').child(id_transaction).remove()
        
     except Exception as e:
-        return jsonify({'status': 'conflict', 'message': 'Erro ao cancelar a transação.'}), 400
+        return jsonify({'status': 'conflict', 'message': 'Erro ao cancelar a transaÃ§Ã£o.'}), 400
 
     return redirect(url_for('listar_pendentes'))
 
@@ -2478,15 +2508,15 @@ def buscar_dados():
     data_fim = dados.get("data_fim")
 
     if not cidades or not data_inicio or not data_fim:
-        return jsonify({"erro": "Parâmetros incompletos"}), 400
+        return jsonify({"erro": "ParÃ¢metros incompletos"}), 400
 
-    # 🔹 Converte as datas em objetos datetime
+    # ðŸ”¹ Converte as datas em objetos datetime
     inicio = datetime.strptime(data_inicio, "%Y-%m-%d")
     fim = datetime.strptime(data_fim, "%Y-%m-%d")
 
     resultados = {}
 
-    # 🔹 Loop sobre as datas
+    # ðŸ”¹ Loop sobre as datas
     dia_atual = inicio
     while dia_atual <= fim:
         ano = str(dia_atual.year)
@@ -2542,11 +2572,11 @@ def buscar_ordens():
                             
                             tecnico_id = item.get("user_id")
                             if tecnico_id:
-                                # Se ainda não está no cache, busca no servidor
+                                # Se ainda nÃ£o estÃ¡ no cache, busca no servidor
                                 if tecnico_id not in tecnicos_cache:
                                     tecnico_data = db.child("users").child(tecnico_id).child("name").get().val()
                                     tecnicos_cache[tecnico_id] = tecnico_data
-                                # adiciona o nome do técnico ao item
+                                # adiciona o nome do tÃ©cnico ao item
                                 item["tecnico_nome"] = tecnicos_cache[tecnico_id]
 
                             ordens.append(item)
@@ -2559,7 +2589,6 @@ def buscar_ordens():
     print(ordens)
     return jsonify({"success": True, "ordens": ordens})
 
-
 @app.route("/upload_pdf", methods=["POST"])
 def upload_pdf():
 
@@ -2567,7 +2596,6 @@ def upload_pdf():
     file = request.files.get("pdf")
     if not file or file.filename == "":
         return jsonify({"status": "error", "message": "PDF não recebido"}), 400
-
 
     pdf_file = request.files["pdf"]
 
@@ -2577,26 +2605,41 @@ def upload_pdf():
         "cpf": request.form.get("cpf"),
     }
 
+    file.stream.seek(0)
+
     # Salvar PDF no Storage
-    filename = f"relatorios/{int(time.time())}.pdf"
-    storage.child(filename).put(pdf_file)
-    pdf_url = storage.child(filename).get_url(None)
 
     # Identificar técnico logado
-    tecnico_id = session.get("name")
 
     relatorio_data = {
-        "pdf_url": pdf_url,
-        "filename": filename,
-        "tecnico": tecnico_id,
+        "pdf_url": None,
+        "filename": f"relatorios/{int(time.time())}.pdf",
+        "tecnico": session.get("name"),
+        "tecnico_user_id": session.get("user"),
         "cliente": cliente,
-        "timestamp": int(time.time())
+        "document_type": request.form.get("document_type") or "Relatório Técnico",
+        "timestamp": int(time.time()),
+        "document_hash": AdvancedSignatureComponent.hash_bytes(file.read()),
+        "signature_status": "pending" if session.get("user") else "unsigned"
     }
+
+    file.stream.seek(0)
+
+    storage.child(relatorio_data["filename"]).put(pdf_file)
+    relatorio_data["pdf_url"] = storage.child(relatorio_data["filename"]).get_url(None)
 
     # Salvar no Realtime Database
     relatorio_id = db.child("relatorios").push(relatorio_data)
 
-    return jsonify({"status": "ok", "url": pdf_url})
+    return jsonify(
+        {
+            "status": "ok",
+            "url": relatorio_data["pdf_url"],
+            "filename": relatorio_data["filename"],
+            "relatorio_id": relatorio_id.get("name") if isinstance(relatorio_id, dict) else None,
+            "document_hash": relatorio_data["document_hash"],
+        }
+    )
 
 
 @app.template_filter('datetime')
@@ -2613,8 +2656,8 @@ def relatorios_lista_pdf():
 
             # Garante que todos os campos existam
             cliente = item.get("cliente", {})
-            tecnico = item.get("tecnico", "Não informado")
-            pdf_url = item.get("pdf_url") or item.get("url")  # compatível com versões antigas
+            tecnico = item.get("tecnico", "NÃ£o informado")
+            pdf_url = item.get("pdf_url") or item.get("url")  # compatÃ­vel com versÃµes antigas
             timestamp = item.get("timestamp", 0)
 
             lista.append({
@@ -2623,8 +2666,8 @@ def relatorios_lista_pdf():
                 "tecnico": tecnico,
                 "timestamp": timestamp,
                 "cliente": {
-                    "nome": cliente.get("nome", "Não informado"),
-                    "cpf": cliente.get("cpf", "Não informado"),
+                    "nome": cliente.get("nome", "NÃ£o informado"),
+                    "cpf": cliente.get("cpf", "NÃ£o informado"),
                 }
             })
 
@@ -2633,7 +2676,1053 @@ def relatorios_lista_pdf():
 
     return render_template("relatorios_lista_pdf.html", relatorios=lista)
 
+@app.route('/api/ufs')
+def api_ufs():
+    data = db.child("uf").get().val() or {}
+    return jsonify({"ufs": list(data.keys())})
+
+@app.route('/api/cidades/<uf>')
+def api_cidades(uf):
+    data = db.child("uf").child(uf).get().val() or {}
+    cidades = list(data.keys())
+    return jsonify({"cidades": cidades})
+
+@app.route('/api/telefone_cidade')
+def api_telefone_cidade():
+    uf = request.args.get("uf")
+    cidade = request.args.get("cidade")
+
+    if not uf or not cidade:
+        return jsonify({"telefone": None})
+
+    ref = db.child("uf").child(uf).child(cidade)
+    telefone = ref.get().val()
+
+    return jsonify({"telefone": telefone})
+
+@app.route('/post_transacao_pendente', methods=['POST', 'GET'])
+def post_transacao_pendente():
+
+    dados = request.get_json()
+    print(dados)
+    total_empresa = dados.get("total_empresa")
+    itens = dados.get("itens", [])
+    
+    user = session['name']
+    id_origem = itens[0]['tecnico_id']
+    
+    origem = itens[0]['tecnico_nome']
+    
+    type = "c"
+    
+    amount = "{:.2f}".format(total_empresa, 2)
+    
+    category = "ServiÃ§o"
+    #especie_method = request.form.get('especie').title()
+    especie = f'Remessa PIX'
+    destinatario = "123 CaÃ§a Vazamentos"
+    
+    lista_os = [item['numero_os'] for item in itens]
+    lista_numeros_os = ", ".join(lista_os)
+    #taxa = request.form.get('taxa')
+    description = f'Pagamento referente Ã s OSs: {lista_numeros_os}.'
+
+    agora = datetime.now()
+    
+    Financeiro.post_transaction_credito_tecnico(date=agora, type=type, amount=amount, category=category, description=description, especie=especie, destinatario=destinatario, user=user, origem=origem, id_origem=id_origem)
+
+    id_transaction = itens[0]['id_transaction']
+    
+
+     
+    for item in itens:
+        date = item['date_payment']
+        print(date)
+        try:
+            date = datetime.strptime(date, '%Y-%m-%d')
+        except ValueError:
+                return "Formato de data invÃ¡lido."
+                
+        year = str(date.year)
+        month = f"{date.month:02d}"
+        day = f"{date.day:02d}"
+            
+        get_service_pedente = db.child("financeiro").child("transactions_pendentes").child(year).child(month).child(day).child(item['id_transaction']).get().val()
+        print(get_service_pedente)
+        db.child("financeiro").child("transactions_confirmadas").child(year).child(month).child(day).push(get_service_pedente)
+        db.child("financeiro").child("transactions_pendentes").child(year).child(month).child(day).child(item['id_transaction']).remove()
+
+        
+    return True
+
+@app.route('/transacao_pendente_tecnico')
+@check_roles(['tecnico'])
+def transacao_pendente_tecnico():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    tecnico_id = session.get("user")  # <-- Certifique-se que vocÃª salva o ID do tÃ©cnico na sessÃ£o
+
+    pendentes = {}
+    data = db.child("financeiro").child("transactions_pendentes").get().val() or {}
+
+    for ano, meses in data.items():
+        for mes, dias in meses.items():
+            for dia, transacoes in dias.items():
+                for pendente_id, pendente in transacoes.items():
+                    # FILTRA APENAS AS OS DO TÃ‰CNICO LOGADO
+                    if pendente.get("tecnico_id") == tecnico_id:
+
+                        pendentes[pendente_id] = {
+                            **pendente,
+                            "ano": ano,
+                            "mes": mes,
+                            "dia": dia,
+                            "id": pendente_id
+                        }
+
+    return render_template('transacao_pendente_tecnico.html', pendentes=pendentes)
+
+
+@app.route("/cancel_transaction_pendding_tecnico", methods=["POST"])
+def cancel_transaction_pendding_tecnico():
+    data = request.get_json()
+    transaction_id = data.get("id")
+    date_payment = data.get("date_payment")
+
+    try:
+        date = datetime.strptime(date_payment, '%Y-%m-%d')
+    except ValueError:
+            return "Formato de data invÃ¡lido."
+            
+    year = str(date.year)
+    month = f"{date.month:02d}"
+    day = f"{date.day:02d}"
+
+    data = db.child("financeiro").child("transactions_pendentes").child(year).child(month).child(day).child(transaction_id).get().val()
+
+    id_os = data.get("id_os")
+    city_os = data.get("city_os")
+    date_os = data.get("date_os")
+    tecnico_id = data.get("tecnico_id")
+    id_create_transaction_user = data.get("id_create_transaction_user")
+    id_create_transaction_wallet = data.get("id_create_transaction_wallet")
+
+
+    try:
+        date = datetime.strptime(date_os, '%Y-%m-%d')
+    except ValueError:
+            return "Formato de data invÃ¡lido."
+            
+    year_os = str(date.year)
+    month_os = f"{date.month:02d}"
+    day_os = f"{date.day:02d}"
+
+
+
+    try:
+
+        db.child("ordens_servico").child(city_os).child(year_os).child(month_os).child(day_os).child(id_os).child('status_paymment').remove()
+
+        db.child("users").child(tecnico_id).child('wallet').child('cities').child(city_os).child(year).child(month).child(day).child('transactions').child('success').child(id_create_transaction_user).remove()
+
+        db.child("wallet").child(city_os).child(year).child(month).child(day).child('transactions').child('success').child(id_create_transaction_wallet).remove()
+
+        db.child("financeiro").child("transactions_pendentes").child(year).child(month).child(day).child(transaction_id).remove()
+
+        print(f"ID da transaÃ§Ã£o a ser deletada: {transaction_id}")
+        print(f"Data de pagamento associada: {date_payment}")
+        print(city_os)
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+    
+@app.route('/comissao_atendimento', methods=['GET', 'POST'])
+@check_roles(['admin'])
+def comissao_atendimento():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    return render_template('comissao_atendimento.html')
+
+@app.route("/buscar_comissoes", methods=["POST"])
+def buscar_comissoes():
+    data = request.get_json()
+
+    ano = str(data.get("ano"))
+    mes = f"{int(data.get('mes')):02d}"
+
+    ordens = []
+
+    try:
+        dias = (
+            db.child("financeiro")
+              .child("transactions_confirmadas")
+              .child(ano)
+              .child(mes)
+              .get()
+        )
+
+        if not dias.each():
+            return jsonify({"ordens": []})
+
+        for dia in dias.each():
+            dia_numero = dia.key()
+
+            for transacao_id, item in dia.val().items():
+
+                # ðŸ”¹ PadronizaÃ§Ã£o TOTAL para o front
+                item["id_transaction"] = transacao_id
+                item["dia"] = dia_numero
+                item["status"] = "recebido"   # seu filtro espera isso
+                item["city"] = item.get("city_os")  # âš ï¸ FRONT USA os.city
+                item["tecnico_nome"] = item.get("atendente")
+                if item["tecnico_nome"] == "Alexandre":
+                    print(item["tecnico_nome"])
+                ordens.append(item)
+                
+
+        return jsonify({"ordens": ordens})
+
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+    
+@app.route("/kanban")
+def kanban():
+    role = session.get("role")
+    user_id = session.get("user")
+    user_name = session.get("name")
+
+    tasks = db.child("kanban").child("tasks").get().val() or {}
+
+    lista = []
+
+    for tid, t in tasks.items():
+        t["id"] = tid
+
+        # ===== prepara chat =====
+        comentarios = t.get("comentarios", {})
+        chat = []
+
+        for c in comentarios.values():
+            chat.append(c)
+
+        chat.sort(key=lambda x: x.get("data", ""))
+        t["chat"] = chat[-3:]  # Ãºltimos 3 comentÃ¡rios
+
+        # ===== Ãºltima atualizaÃ§Ã£o =====
+        historico = t.get("historico", {})
+        if historico:
+            ultima = list(historico.values())[-1]
+            t["ultimo_status_em"] = ultima.get("data")
+        else:
+            t["ultimo_status_em"] = t.get("created_at")
+
+        # ===== FILTRO (UM ÃšNICO APPEND) =====
+        if role == "admin" or t.get("responsavel_id") == user_id:
+            lista.append(t)
+
+
+    users = db.child("users").get().val() or {}
+
+    return render_template(
+        "kanban.html",
+        tasks=lista,
+        users=users,
+        role=role,
+        user_id=user_id,
+        user_name=user_name
+    )
+
+
+@app.route("/kanban/criar", methods=["POST"])
+def criar_task():
+    data = request.form
+
+    responsavel_id = data.get("responsavel_id")
+    responsavel = db.child("users").child(responsavel_id).get().val()
+
+    payload = {
+        "titulo": data.get("titulo"),
+        "descricao": data.get("descricao"),
+        "status": "todo",
+        "prioridade": data.get("prioridade"),
+        "responsavel_id": responsavel_id,
+        "responsavel_nome": responsavel.get("name"),
+        "role_responsavel": responsavel.get("role"),
+        "criado_por_id": session.get("user"),
+        "criado_por_nome": session.get("name"),
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+    }
+
+    db.child("kanban").child("tasks").push(payload)
+    return redirect(url_for("kanban"))
+
+@app.route("/kanban/mover", methods=["POST"])
+def mover_task():
+    data = request.get_json() or {}
+    task_id = data.get("id")
+    novo_status = data.get("status")
+    print(data)
+    
+    if not task_id or novo_status not in ["todo", "doing", "done"]:
+        return jsonify(success=False), 400
+
+    # Pega status anterior
+    status_anterior = db.child("kanban").child("tasks").child(task_id).child("status").get().val()
+
+    # Atualiza status
+    db.child("kanban").child("tasks").child(task_id).update({"status": novo_status})
+
+    # Registra histÃ³rico
+    db.child("kanban").child("tasks").child(task_id).child("historico").push({
+        "de": status_anterior,
+        "para": novo_status,
+        "user_id": session.get("user"),
+        "user_nome": session.get("name"),
+        "data": datetime.now().strftime("%Y-%m-%d %H:%M")
+    })
+
+    return jsonify(success=True)
+
+@app.route("/kanban/comentar", methods=["POST"])
+def comentar_task():
+    data = request.get_json() or {}
+    task_id = data.get("id")
+    texto = data.get("texto", "").strip()
+
+    if not task_id or not texto:
+        return jsonify(success=False), 400
+
+    db.child("kanban").child("tasks").child(task_id).child("comentarios").push({
+        "texto": texto,
+        "user_nome": session.get("name"),
+        "data": datetime.now().strftime("%Y-%m-%d %H:%M")
+    })
+
+    return jsonify(success=True)
+
+@app.route("/kanban/task/<task_id>")
+def obter_task(task_id):
+    task = db.child("kanban").child("tasks").child(task_id).get().val()
+    return jsonify(task)
+
+@app.route("/kanban/excluir", methods=["POST"])
+def excluir_task():
+    data = request.get_json() or {}
+    task_id = data.get("id")
+
+    if not task_id:
+        return jsonify(success=False, error="ID invÃ¡lido"), 400
+
+    role = session.get("role")
+    user_id = session.get("user")
+
+    task_ref = db.child("kanban").child("tasks").child(task_id)
+    task = task_ref.get().val()
+
+    if not task:
+        return jsonify(success=False, error="Tarefa nÃ£o encontrada"), 404
+
+    # PermissÃµes: admin pode excluir tudo; nÃ£o-admin sÃ³ exclui se foi o criador
+    if role != "admin" and task.get("criado_por_id") != user_id:
+        return jsonify(success=False, error="Sem permissÃ£o"), 403
+
+    db.child("kanban").child("tasks").child(task_id).remove()
+    return jsonify(success=True)
+
+@app.route("/atualizar_valor_os", methods=["POST"])
+def atualizar_valor_os():
+    data = request.get_json()
+
+    date = data.get("date")
+    os_id = data.get("os_id")
+    city = data.get("city")
+    newprice_raw = data.get("newprice")
+
+    # Converte o valor monetÃ¡rio (ex: "1.250,00" â†’ 1250.00)
+    new_price = convert_monetary_value(newprice_raw)
+
+    # Converte a data
+    date = datetime.strptime(date, "%Y-%m-%d")
+    year = str(date.year)
+    month = f"{date.month:02d}"
+    day = f"{date.day:02d}"
+
+    # Atualiza o valor da OS no Firebase
+    db.child("ordens_servico").child(city).child(year).child(month).child(day).child(os_id).update({"newprice": new_price})
+
+    return jsonify({
+        "success": True,
+        "newprice": new_price
+    })
+
+
+@app.route('/adm_desempenho_atendentes', methods=['GET', 'POST'])
+@check_roles(['admin'])
+def adm_desempenho_atendentes():
+    meses = [
+        {"value": "01", "name": "Janeiro"},
+        {"value": "02", "name": "Fevereiro"},
+        {"value": "03", "name": "Março"},
+        {"value": "04", "name": "Abril"},
+        {"value": "05", "name": "Maio"},
+        {"value": "06", "name": "Junho"},
+        {"value": "07", "name": "Julho"},
+        {"value": "08", "name": "Agosto"},
+        {"value": "09", "name": "Setembro"},
+        {"value": "10", "name": "Outubro"},
+        {"value": "11", "name": "Novembro"},
+        {"value": "12", "name": "Dezembro"},
+    ]
+
+    now_sp = datetime.now(pytz.timezone('America/Sao_Paulo'))
+    current_year = now_sp.year
+    selected_month = now_sp.strftime("%m")
+    selected_year = str(current_year)
+    selected_attendant = "all"
+
+    if request.method == 'POST':
+        selected_month = request.form.get('selected_month', selected_month)
+        selected_year = request.form.get('selected_year', selected_year)
+        selected_attendant = request.form.get('selected_attendant', selected_attendant)
+
+    years = [str(current_year - i) for i in range(5)]
+
+    attendance_data = db.child("attendance_records").get().val() or {}
+    users_data = db.child("users").get().val() or {}
+    channel_labels = {}
+
+    rows_map = defaultdict(lambda: {
+        "attendant_id": "",
+        "attendant_name": "",
+        "day": "",
+        "total": 0,
+        "agendados": 0,
+        "aguardando": 0,
+        "channels_agendados": defaultdict(int),
+        "channels_aguardando": defaultdict(int),
+    })
+
+    for city, years_data in attendance_data.items():
+        if not isinstance(years_data, dict) or selected_year not in years_data:
+            continue
+
+        months_data = years_data.get(selected_year, {})
+        if not isinstance(months_data, dict) or selected_month not in months_data:
+            continue
+
+        days_data = months_data.get(selected_month, {})
+        if not isinstance(days_data, dict):
+            continue
+
+        for day, attendances in days_data.items():
+            if not isinstance(attendances, dict):
+                continue
+
+            for attendance_info in attendances.values():
+                if not isinstance(attendance_info, dict):
+                    continue
+
+                attendant_id = attendance_info.get('user_id')
+                if not attendant_id:
+                    continue
+
+                attendant_data = users_data.get(attendant_id, {}) if isinstance(users_data, dict) else {}
+                attendant_name = attendant_data.get('name', 'Não informado')
+                row_key = (attendant_id, day)
+                row = rows_map[row_key]
+
+                row["attendant_id"] = attendant_id
+                row["attendant_name"] = attendant_name
+                row["day"] = day
+                row["total"] += 1
+
+                channel = str(attendance_info.get('canal', '')).strip() or "Não informado"
+                channel_labels[channel.lower()] = channel
+                status = str(attendance_info.get('status', '')).strip().lower()
+                if status == "agendado":
+                    row["agendados"] += 1
+                    row["channels_agendados"][channel] += 1
+                elif status == "aguardando":
+                    row["aguardando"] += 1
+                    row["channels_aguardando"][channel] += 1
+
+    for row in rows_map.values():
+        total = row["total"]
+        row["percent_agendados"] = round((row["agendados"] / total) * 100, 2) if total else 0
+        row["percent_aguardando"] = round((row["aguardando"] / total) * 100, 2) if total else 0
+        row["channels_agendados"] = dict(row["channels_agendados"])
+        row["channels_aguardando"] = dict(row["channels_aguardando"])
+
+    channel_columns = sorted(channel_labels.values(), key=lambda item: item.lower())
+
+    attendants_options = sorted(
+        [
+            {
+                "id": attendant_id,
+                "name": attendant_data.get("name", "Não informado")
+            }
+            for attendant_id, attendant_data in users_data.items()
+            if isinstance(attendant_data, dict) and attendant_data.get("role") == "user"
+        ],
+        key=lambda item: item["name"].lower()
+    )
+
+    grouped_tables_map = defaultdict(lambda: {
+        "attendant_id": "",
+        "attendant_name": "",
+        "rows": [],
+    })
+
+    sorted_rows = sorted(
+        rows_map.values(),
+        key=lambda item: (item["attendant_name"].lower(), int(item["day"]))
+    )
+
+    for row in sorted_rows:
+        attendant_id = row["attendant_id"]
+        grouped = grouped_tables_map[attendant_id]
+        grouped["attendant_id"] = attendant_id
+        grouped["attendant_name"] = row["attendant_name"]
+        grouped["rows"].append(row)
+
+    grouped_tables = []
+    for grouped in grouped_tables_map.values():
+        rows = grouped["rows"]
+        total = sum(row["total"] for row in rows)
+        agendados = sum(row["agendados"] for row in rows)
+        aguardando = sum(row["aguardando"] for row in rows)
+        percent_agendados = round((agendados / total) * 100, 2) if total else 0
+        percent_aguardando = round((aguardando / total) * 100, 2) if total else 0
+
+        chart_labels = []
+        chart_agendados = []
+        chart_aguardando = []
+        chart_percent_agendados = []
+        chart_percent_aguardando = []
+
+        for row in rows:
+            try:
+                date_obj = datetime.strptime(
+                    f"{selected_year}-{selected_month}-{int(row['day']):02d}",
+                    "%Y-%m-%d"
+                )
+                weekday_map = {
+                    0: "seg.",
+                    1: "ter.",
+                    2: "qua.",
+                    3: "qui.",
+                    4: "sex.",
+                    5: "sab.",
+                    6: "dom.",
+                }
+                weekday_label = weekday_map.get(date_obj.weekday(), "")
+                chart_labels.append(f"{int(row['day']):02d} {weekday_label}")
+            except ValueError:
+                chart_labels.append(str(row["day"]))
+
+            chart_agendados.append(row["agendados"])
+            chart_aguardando.append(row["aguardando"])
+            chart_percent_agendados.append(row["percent_agendados"])
+            chart_percent_aguardando.append(row["percent_aguardando"])
+
+        grouped_tables.append({
+            "attendant_id": grouped["attendant_id"],
+            "attendant_name": grouped["attendant_name"],
+            "rows": rows,
+            "total_atendimentos": total,
+            "total_agendados": agendados,
+            "total_aguardando": aguardando,
+            "percent_agendados": percent_agendados,
+            "percent_aguardando": percent_aguardando,
+            "chart_labels": chart_labels,
+            "chart_agendados": chart_agendados,
+            "chart_aguardando": chart_aguardando,
+            "chart_percent_agendados": chart_percent_agendados,
+            "chart_percent_aguardando": chart_percent_aguardando,
+        })
+
+    grouped_tables.sort(key=lambda item: item["attendant_name"].lower())
+
+    if selected_attendant != "all":
+        grouped_tables = [
+            table for table in grouped_tables
+            if table["attendant_id"] == selected_attendant
+        ]
+
+    total_atendimentos = sum(table["total_atendimentos"] for table in grouped_tables)
+    total_agendados = sum(table["total_agendados"] for table in grouped_tables)
+    total_aguardando = sum(table["total_aguardando"] for table in grouped_tables)
+    total_atendentes = len(grouped_tables)
+    selected_month_name = next(
+        (mes["name"] for mes in meses if mes["value"] == selected_month),
+        selected_month
+    )
+
+    return render_template(
+        'adm_desempenho_atendentes.html',
+        meses=meses,
+        years=years,
+        selected_month=selected_month,
+        selected_year=selected_year,
+        selected_attendant=selected_attendant,
+        selected_month_name=selected_month_name,
+        attendants_options=attendants_options,
+        channel_columns=channel_columns,
+        grouped_tables=grouped_tables,
+        total_atendimentos=total_atendimentos,
+        total_agendados=total_agendados,
+        total_aguardando=total_aguardando,
+        total_atendentes=total_atendentes,
+    )
+
+
+@app.route('/adm_desempenho_agendamentos', methods=['GET', 'POST'])
+@check_roles(['admin'])
+def adm_desempenho_agendamentos():
+    meses = [
+        {"value": "01", "name": "Janeiro"},
+        {"value": "02", "name": "Fevereiro"},
+        {"value": "03", "name": "Março"},
+        {"value": "04", "name": "Abril"},
+        {"value": "05", "name": "Maio"},
+        {"value": "06", "name": "Junho"},
+        {"value": "07", "name": "Julho"},
+        {"value": "08", "name": "Agosto"},
+        {"value": "09", "name": "Setembro"},
+        {"value": "10", "name": "Outubro"},
+        {"value": "11", "name": "Novembro"},
+        {"value": "12", "name": "Dezembro"},
+    ]
+
+    now_sp = datetime.now(pytz.timezone('America/Sao_Paulo'))
+    current_year = now_sp.year
+    selected_month = now_sp.strftime("%m")
+    selected_year = str(current_year)
+    selected_attendant = "all"
+
+    if request.method == 'POST':
+        selected_month = request.form.get('selected_month', selected_month)
+        selected_year = request.form.get('selected_year', selected_year)
+        selected_attendant = request.form.get('selected_attendant', selected_attendant)
+
+    years = [str(current_year - i) for i in range(5)]
+
+    attendance_data = db.child("attendance_records").get().val() or {}
+    orders_data = db.child("ordens_servico").get().val() or {}
+    users_data = db.child("users").get().val() or {}
+
+    rows_map = defaultdict(lambda: {
+        "attendant_id": "",
+        "attendant_name": "",
+        "day": "",
+        "total_atendimentos": 0,
+        "agendados_os": 0,
+        "percent_agendados": 0,
+    })
+
+    for city, years_data in attendance_data.items():
+        if not isinstance(years_data, dict) or selected_year not in years_data:
+            continue
+
+        months_data = years_data.get(selected_year, {})
+        if not isinstance(months_data, dict) or selected_month not in months_data:
+            continue
+
+        days_data = months_data.get(selected_month, {})
+        if not isinstance(days_data, dict):
+            continue
+
+        for day, attendances in days_data.items():
+            if not isinstance(attendances, dict):
+                continue
+
+            for attendance_info in attendances.values():
+                if not isinstance(attendance_info, dict):
+                    continue
+
+                attendant_id = attendance_info.get('user_id')
+                if not attendant_id:
+                    continue
+
+                attendant_data = users_data.get(attendant_id, {}) if isinstance(users_data, dict) else {}
+                attendant_name = attendant_data.get('name', 'Não informado')
+                row_key = (attendant_id, day)
+                row = rows_map[row_key]
+
+                row["attendant_id"] = attendant_id
+                row["attendant_name"] = attendant_name
+                row["day"] = day
+                row["total_atendimentos"] += 1
+
+    for city, years_data in orders_data.items():
+        if not isinstance(years_data, dict) or selected_year not in years_data:
+            continue
+
+        months_data = years_data.get(selected_year, {})
+        if not isinstance(months_data, dict) or selected_month not in months_data:
+            continue
+
+        days_data = months_data.get(selected_month, {})
+        if not isinstance(days_data, dict):
+            continue
+
+        for day, orders in days_data.items():
+            if not isinstance(orders, dict):
+                continue
+
+            for order_info in orders.values():
+                if not isinstance(order_info, dict):
+                    continue
+
+                attendant_id = order_info.get('user_id')
+                if not attendant_id:
+                    continue
+
+                attendant_data = users_data.get(attendant_id, {}) if isinstance(users_data, dict) else {}
+                attendant_name = attendant_data.get('name', 'Não informado')
+                row_key = (attendant_id, day)
+                row = rows_map[row_key]
+
+                row["attendant_id"] = attendant_id
+                row["attendant_name"] = attendant_name
+                row["day"] = day
+                row["agendados_os"] += 1
+
+    for row in rows_map.values():
+        total_atendimentos = row["total_atendimentos"]
+        row["percent_agendados"] = (
+            round((row["agendados_os"] / total_atendimentos) * 100, 2)
+            if total_atendimentos else 0
+        )
+
+    attendants_options = sorted(
+        [
+            {
+                "id": attendant_id,
+                "name": attendant_data.get("name", "Não informado")
+            }
+            for attendant_id, attendant_data in users_data.items()
+            if isinstance(attendant_data, dict) and attendant_data.get("role") == "user"
+        ],
+        key=lambda item: item["name"].lower()
+    )
+
+    grouped_tables_map = defaultdict(lambda: {
+        "attendant_id": "",
+        "attendant_name": "",
+        "rows": [],
+    })
+
+    sorted_rows = sorted(
+        rows_map.values(),
+        key=lambda item: (item["attendant_name"].lower(), int(item["day"]))
+    )
+
+    for row in sorted_rows:
+        attendant_id = row["attendant_id"]
+        grouped = grouped_tables_map[attendant_id]
+        grouped["attendant_id"] = attendant_id
+        grouped["attendant_name"] = row["attendant_name"]
+        grouped["rows"].append(row)
+
+    grouped_tables = []
+    for grouped in grouped_tables_map.values():
+        rows = grouped["rows"]
+        total_atendimentos = sum(row["total_atendimentos"] for row in rows)
+        total_agendados = sum(row["agendados_os"] for row in rows)
+        percent_agendados = round(
+            (total_agendados / total_atendimentos) * 100 if total_atendimentos else 0,
+            2
+        )
+
+        chart_labels = []
+        chart_totais = []
+        chart_agendados = []
+        chart_percent_agendados = []
+
+        for row in rows:
+            try:
+                date_obj = datetime.strptime(
+                    f"{selected_year}-{selected_month}-{int(row['day']):02d}",
+                    "%Y-%m-%d"
+                )
+                weekday_map = {
+                    0: "seg.",
+                    1: "ter.",
+                    2: "qua.",
+                    3: "qui.",
+                    4: "sex.",
+                    5: "sab.",
+                    6: "dom.",
+                }
+                weekday_label = weekday_map.get(date_obj.weekday(), "")
+                chart_labels.append(f"{int(row['day']):02d} {weekday_label}")
+            except ValueError:
+                chart_labels.append(str(row["day"]))
+
+            chart_totais.append(row["total_atendimentos"])
+            chart_agendados.append(row["agendados_os"])
+            chart_percent_agendados.append(row["percent_agendados"])
+
+        grouped_tables.append({
+            "attendant_id": grouped["attendant_id"],
+            "attendant_name": grouped["attendant_name"],
+            "rows": rows,
+            "total_atendimentos": total_atendimentos,
+            "total_agendados": total_agendados,
+            "percent_agendados": percent_agendados,
+            "chart_labels": chart_labels,
+            "chart_totais": chart_totais,
+            "chart_agendados": chart_agendados,
+            "chart_percent_agendados": chart_percent_agendados,
+        })
+
+    grouped_tables.sort(key=lambda item: item["attendant_name"].lower())
+
+    if selected_attendant != "all":
+        grouped_tables = [
+            table for table in grouped_tables
+            if table["attendant_id"] == selected_attendant
+        ]
+
+    total_atendimentos = sum(table["total_atendimentos"] for table in grouped_tables)
+    total_agendados = sum(table["total_agendados"] for table in grouped_tables)
+    total_atendentes = len(grouped_tables)
+    percent_agendados_geral = round(
+        (total_agendados / total_atendimentos) * 100 if total_atendimentos else 0,
+        2
+    )
+    selected_month_name = next(
+        (mes["name"] for mes in meses if mes["value"] == selected_month),
+        selected_month
+    )
+
+    return render_template(
+        'adm_desempenho_agendamentos.html',
+        meses=meses,
+        years=years,
+        selected_month=selected_month,
+        selected_year=selected_year,
+        selected_attendant=selected_attendant,
+        selected_month_name=selected_month_name,
+        attendants_options=attendants_options,
+        grouped_tables=grouped_tables,
+        total_atendimentos=total_atendimentos,
+        total_agendados=total_agendados,
+        total_atendentes=total_atendentes,
+        percent_agendados_geral=percent_agendados_geral,
+    )
+
+
+@app.route('/adm_servicos_tecnicos', methods=['GET', 'POST'])
+@check_roles(['admin'])
+def adm_servicos_tecnicos():
+    meses = [
+        {"value": "01", "name": "Janeiro"},
+        {"value": "02", "name": "Fevereiro"},
+        {"value": "03", "name": "MarÃ§o"},
+        {"value": "04", "name": "Abril"},
+        {"value": "05", "name": "Maio"},
+        {"value": "06", "name": "Junho"},
+        {"value": "07", "name": "Julho"},
+        {"value": "08", "name": "Agosto"},
+        {"value": "09", "name": "Setembro"},
+        {"value": "10", "name": "Outubro"},
+        {"value": "11", "name": "Novembro"},
+        {"value": "12", "name": "Dezembro"},
+    ]
+
+    def format_currency_brl(value):
+        formatted = f"{value:,.2f}"
+        formatted = formatted.replace(",", "X").replace(".", ",").replace("X", ".")
+        return f"R$ {formatted}"
+
+    now_sp = datetime.now(pytz.timezone('America/Sao_Paulo'))
+    current_year = now_sp.year
+    selected_month = now_sp.strftime("%m")
+    selected_year = str(current_year)
+    selected_technician = "all"
+
+    if request.method == 'POST':
+        selected_month = request.form.get('selected_month', selected_month)
+        selected_year = request.form.get('selected_year', selected_year)
+        selected_technician = request.form.get('selected_technician', selected_technician)
+
+    years = [str(current_year - i) for i in range(5)]
+
+    orders_data = db.child("ordens_servico").get().val() or {}
+    users_data = db.child("users").get().val() or {}
+
+    technician_rows = defaultdict(lambda: {
+        "technician_id": "",
+        "technician_name": "",
+        "total_retornos": 0,
+        "services": defaultdict(lambda: {
+            "service": "",
+            "total_services": 0,
+            "total_amount": 0.0,
+            "average_amount": 0.0,
+            "total_amount_display": "",
+            "average_amount_display": "",
+        }),
+    })
+    total_retornos_geral = 0
+
+    for city, years_data in orders_data.items():
+        if not isinstance(years_data, dict) or selected_year not in years_data:
+            continue
+
+        months_data = years_data.get(selected_year, {})
+        if not isinstance(months_data, dict) or selected_month not in months_data:
+            continue
+
+        days_data = months_data.get(selected_month, {})
+        if not isinstance(days_data, dict):
+            continue
+
+        for orders in days_data.values():
+            if not isinstance(orders, dict):
+                continue
+
+            for order_info in orders.values():
+                if not isinstance(order_info, dict):
+                    continue
+
+                technician_id = order_info.get('tecnico_id')
+                if not technician_id:
+                    continue
+
+                technician_data = users_data.get(technician_id, {}) if isinstance(users_data, dict) else {}
+                technician_name = technician_data.get('name', 'NÃ£o informado')
+                service_name = str(order_info.get('service', '')).strip() or "NÃ£o informado"
+                raw_amount = str(order_info.get('newprice', '0')).strip() or "0"
+
+                try:
+                    amount = float(convert_monetary_value(raw_amount))
+                except (TypeError, ValueError, AttributeError):
+                    amount = 0.0
+
+                technician_group = technician_rows[technician_id]
+                technician_group["technician_id"] = technician_id
+                technician_group["technician_name"] = technician_name
+
+                if service_name.lower() == "retorno":
+                    technician_group["total_retornos"] += 1
+                    total_retornos_geral += 1
+                    continue
+
+                service_group = technician_group["services"][service_name]
+                service_group["service"] = service_name
+                service_group["total_services"] += 1
+                service_group["total_amount"] += amount
+
+    technician_options = sorted(
+        [
+            {
+                "id": user_id,
+                "name": user_info.get("name", "NÃ£o informado")
+            }
+            for user_id, user_info in users_data.items()
+            if isinstance(user_info, dict) and user_info.get("role") == "tecnico"
+        ],
+        key=lambda item: item["name"].lower()
+    )
+
+    technician_tables = []
+    for technician in technician_rows.values():
+        if selected_technician != "all" and technician["technician_id"] != selected_technician:
+            continue
+
+        services = []
+        total_services = 0
+        total_amount = 0.0
+
+        for service in technician["services"].values():
+            service["average_amount"] = round(
+                service["total_amount"] / service["total_services"], 2
+            ) if service["total_services"] else 0
+            service["total_amount_display"] = format_currency_brl(service["total_amount"])
+            service["average_amount_display"] = format_currency_brl(service["average_amount"])
+            services.append(service)
+            total_services += service["total_services"]
+            total_amount += service["total_amount"]
+
+        services.sort(key=lambda item: (-item["total_services"], item["service"].lower()))
+
+        average_ticket = round(total_amount / total_services, 2) if total_services else 0
+
+        technician_tables.append({
+            "technician_id": technician["technician_id"],
+            "technician_name": technician["technician_name"],
+            "total_retornos": technician["total_retornos"],
+            "services": services,
+            "total_services": total_services,
+            "total_amount": total_amount,
+            "average_ticket": average_ticket,
+            "total_amount_display": format_currency_brl(total_amount),
+            "average_ticket_display": format_currency_brl(average_ticket),
+        })
+
+    technician_tables.sort(key=lambda item: item["technician_name"].lower())
+
+    summary_service_totals = defaultdict(int)
+    technician_summary_rows = []
+
+    for technician in technician_tables:
+        service_totals = {}
+        for service in technician["services"]:
+            service_name = service["service"]
+            total_services = service["total_services"]
+            service_totals[service_name] = total_services
+            summary_service_totals[service_name] += total_services
+
+        technician_summary_rows.append({
+            "technician_name": technician["technician_name"],
+            "total_services": technician["total_services"],
+            "total_retornos": technician["total_retornos"],
+            "service_totals": service_totals,
+        })
+
+    summary_service_columns = sorted(
+        summary_service_totals.keys(),
+        key=lambda item: (-summary_service_totals[item], item.lower())
+    )
+
+    total_technicians = len(technician_tables)
+    total_services_geral = sum(item["total_services"] for item in technician_tables)
+    total_amount_geral = sum(item["total_amount"] for item in technician_tables)
+    average_ticket_geral = round(
+        total_amount_geral / total_services_geral, 2
+    ) if total_services_geral else 0
+
+    selected_month_name = next(
+        (mes["name"] for mes in meses if mes["value"] == selected_month),
+        selected_month
+    )
+
+    return render_template(
+        'adm_servicos_tecnicos.html',
+        meses=meses,
+        years=years,
+        selected_month=selected_month,
+        selected_year=selected_year,
+        selected_technician=selected_technician,
+        selected_month_name=selected_month_name,
+        technician_options=technician_options,
+        technician_tables=technician_tables,
+        technician_summary_rows=technician_summary_rows,
+        summary_service_columns=summary_service_columns,
+        total_technicians=total_technicians,
+        total_retornos_geral=total_retornos_geral,
+        total_services_geral=total_services_geral,
+        total_amount_geral_display=format_currency_brl(total_amount_geral),
+        average_ticket_geral_display=format_currency_brl(average_ticket_geral),
+    )
+
 
 
 if __name__ == '__main__':
     app.run(debug=True, port=5037)
+

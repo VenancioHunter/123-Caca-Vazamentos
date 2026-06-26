@@ -1,0 +1,210 @@
+{% extends "layout.html" %}
+
+{% block title %}Verificação de Relatório{% endblock %}
+
+{% block content %}
+<style>
+  .verification-shell {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .verification-hero {
+    background: linear-gradient(135deg, #0d5590 0%, #1368ae 100%);
+    border-radius: 24px;
+    color: #fff;
+    padding: 28px 28px 24px;
+    box-shadow: 0 20px 50px rgba(13, 85, 144, 0.18);
+  }
+
+  .verification-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .verification-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    margin-top: 24px;
+  }
+
+  .verification-card {
+    background: #fff;
+    border-radius: 22px;
+    border: 1px solid rgba(13, 85, 144, 0.12);
+    box-shadow: 0 16px 44px rgba(15, 23, 42, 0.08);
+    padding: 22px;
+  }
+
+  .verification-card h5 {
+    color: #0d5590;
+    font-weight: 700;
+    margin-bottom: 18px;
+  }
+
+  .verification-list {
+    display: grid;
+    gap: 14px;
+  }
+
+  .verification-item {
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: #f7fbff;
+    border: 1px solid #d7e7f5;
+  }
+
+  .verification-label {
+    display: block;
+    color: #5c6c7c;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .verification-value {
+    color: #122230;
+    font-size: 15px;
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  .verification-banner {
+    margin-top: 22px;
+    border-radius: 20px;
+    padding: 18px 20px;
+    border: 1px solid {% if verification.valid %}#b8dec7{% else %}#f2c1c1{% endif %};
+    background: {% if verification.valid %}#f0fbf4{% else %}#fff5f5{% endif %};
+    color: {% if verification.valid %}#185c37{% else %}#a03737{% endif %};
+    font-weight: 600;
+  }
+
+  .verification-link {
+    color: #0d5590;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .verification-link:hover {
+    text-decoration: underline;
+  }
+
+  .verification-mono {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 13px;
+  }
+</style>
+
+<div class="verification-shell">
+  <section class="verification-hero">
+    <div class="verification-status">
+      <span>{% if verification.valid %}✓{% else %}!{% endif %}</span>
+      <span>Status: {% if verification.valid %}Assinatura válida{% else %}Assinatura inválida{% endif %}</span>
+    </div>
+    <h1 class="mt-3 mb-2" style="font-weight: 800">Verificação de Assinatura Eletrônica Avançada</h1>
+    <p class="mb-0" style="max-width: 760px; color: rgba(255,255,255,0.9)">
+      Consulte a autenticidade do relatório técnico assinado eletronicamente no sistema 123 Caça Vazamentos.
+    </p>
+  </section>
+
+  <div class="verification-grid">
+    <section class="verification-card">
+      <h5>Dados do Documento</h5>
+      <div class="verification-list">
+        <div class="verification-item">
+          <span class="verification-label">Tipo do documento</span>
+          <div class="verification-value">{{ verification.document_type or "Não informado" }}</div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">Código de verificação</span>
+          <div class="verification-value verification-mono">{{ verification.verification_code or report_id or "Não informado" }}</div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">Data e hora da assinatura</span>
+          <div class="verification-value">
+            {% if verification.signed_at %}
+              {{ verification.signed_at | datetime }}
+            {% else %}
+              Não informado
+            {% endif %}
+          </div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">Hash SHA-256 completo</span>
+          <div class="verification-value verification-mono">{{ verification.document_hash or "Não informado" }}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="verification-card">
+      <h5>Signatário e Credencial</h5>
+      <div class="verification-list">
+        <div class="verification-item">
+          <span class="verification-label">Nome do técnico</span>
+          <div class="verification-value">{{ verification.signer_name or "Não informado" }}</div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">CPF/CNPJ</span>
+          <div class="verification-value">{{ verification.signer_document or "Não informado" }}</div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">Fingerprint da credencial</span>
+          <div class="verification-value verification-mono">{{ verification.fingerprint or "Não informado" }}</div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">ID da credencial</span>
+          <div class="verification-value verification-mono">{{ verification.credential_id or "Não informado" }}</div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">Dispositivo utilizado</span>
+          <div class="verification-value">{{ verification.device_label or "Não informado" }}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="verification-card">
+      <h5>Validação Técnica</h5>
+      <div class="verification-list">
+        <div class="verification-item">
+          <span class="verification-label">Resultado da validação criptográfica</span>
+          <div class="verification-value">{{ verification.cryptographic_validation or "Não informado" }}</div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">Hash assinado no payload</span>
+          <div class="verification-value verification-mono">{{ verification.signed_hash or "Não informado" }}</div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">IP registrado</span>
+          <div class="verification-value">{{ verification.ip or "Não informado" }}</div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">User-Agent</span>
+          <div class="verification-value">{{ verification.user_agent or "Não informado" }}</div>
+        </div>
+        <div class="verification-item">
+          <span class="verification-label">Link de verificação</span>
+          <div class="verification-value">
+            <a class="verification-link" href="{{ verification.verification_url or '#' }}">
+              {{ verification.verification_url or "Não informado" }}
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="verification-banner">
+    {{ verification.message or "Este documento consta como assinado eletronicamente no sistema." }}
+  </div>
+</div>
+{% endblock %}
