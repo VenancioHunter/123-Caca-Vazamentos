@@ -99,6 +99,14 @@ content %}
       <h5>Relatório Técnico (Assinatura Clássica)</h5>
     </a>
 
+    <a class="card-presentation" href="{{ url_for('relatorios_pendentes') }}">
+      <h5>Relatórios Pendentes de Assinatura</h5>
+    </a>
+
+    <a class="card-presentation" href="{{ url_for('relatorios_atribuidos') }}">
+      <h5>Relatórios Atribuídos</h5>
+    </a>
+
     <a
       class="card-presentation"
       href="{{ url_for('transacao_pendente_tecnico') }}"

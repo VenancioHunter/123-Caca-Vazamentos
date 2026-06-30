@@ -540,12 +540,25 @@ content %}
           >Técnico Responsável</label
         >
         <select class="form-select" id="tecnico">
+          {% if signature_mode == 'atribuir' %}
+          <option value="">Selecione o técnico</option>
+          {% for uid, t in tecnicos.items() %}
+          <option
+            value="{{ uid }}"
+            data-nome="{{ t.nome_relatorio or t.name }}"
+            data-cnpj="{{ t.cpf_cnpj or '' }}"
+          >
+            {{ t.nome_relatorio or t.name }}
+          </option>
+          {% endfor %}
+          {% else %}
           <option
             value="{{ tecnico.nome_relatorio }}"
             data-cnpj="{{ tecnico.cpf_cnpj }}"
           >
             {{ tecnico.nome_relatorio }}
           </option>
+          {% endif %}
         </select>
       </div>
 
@@ -893,12 +906,25 @@ content %}
           >Técnico Responsável</label
         >
         <select class="form-select" id="tecnicoreparo">
+          {% if signature_mode == 'atribuir' %}
+          <option value="">Selecione o técnico</option>
+          {% for uid, t in tecnicos.items() %}
+          <option
+            value="{{ uid }}"
+            data-nome="{{ t.nome_relatorio or t.name }}"
+            data-cnpj="{{ t.cpf_cnpj or '' }}"
+          >
+            {{ t.nome_relatorio or t.name }}
+          </option>
+          {% endfor %}
+          {% else %}
           <option
             value="{{ tecnico.nome_relatorio }}"
             data-cnpj="{{ tecnico.cpf_cnpj }}"
           >
             {{ tecnico.nome_relatorio }}
           </option>
+          {% endif %}
         </select>
       </div>
       <div class="mb-3">
@@ -1123,12 +1149,25 @@ content %}
           >Técnico Responsável</label
         >
         <select class="form-select" id="tecnicorecibo">
+          {% if signature_mode == 'atribuir' %}
+          <option value="">Selecione o técnico</option>
+          {% for uid, t in tecnicos.items() %}
+          <option
+            value="{{ uid }}"
+            data-nome="{{ t.nome_relatorio or t.name }}"
+            data-cnpj="{{ t.cpf_cnpj or '' }}"
+          >
+            {{ t.nome_relatorio or t.name }}
+          </option>
+          {% endfor %}
+          {% else %}
           <option
             value="{{ tecnico.nome_relatorio }}"
             data-cnpj="{{ tecnico.cpf_cnpj }}"
           >
             {{ tecnico.nome_relatorio }}
           </option>
+          {% endif %}
         </select>
       </div>
       <div class="text-center mt-4">
@@ -1410,6 +1449,7 @@ content %}
     input.value = valor; // Atualiza o valor do campo
   }
 </script>
+<script src="../static/js/relatorioAtribuir.js"></script>
 <script src="../static/js/recibo.js"></script>
 <script src="../static/js/relatorio.js"></script>
 <script src="../static/js/relatorioReparo.js"></script>

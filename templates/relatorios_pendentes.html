@@ -1,0 +1,265 @@
+{% extends "layout.html" %} {% block title %}Relatórios Pendentes{% endblock %}
+{% block content %}
+<style>
+  :root {
+    --azul-123: #0d5590;
+    --azul-123-escuro: #0b497a;
+  }
+
+  .pendentes-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 4px;
+  }
+
+  .pendentes-titulo {
+    color: var(--azul-123);
+    font-weight: 700;
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+
+  .pendentes-sub {
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+  }
+
+  /* Card da credencial avançada */
+  .credencial-card {
+    border: 0;
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgba(13, 85, 144, 0.1);
+    margin-bottom: 18px;
+  }
+
+  .credencial-card .card-body {
+    padding: 16px;
+  }
+
+  /* Card de cada relatório */
+  .pendente-card {
+    border: 0;
+    border-left: 4px solid var(--azul-123);
+    border-radius: 14px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.2s ease;
+  }
+
+  .pendente-card .card-body {
+    padding: 16px;
+  }
+
+  .doc-tipo {
+    font-weight: 700;
+    color: #1f2937;
+    font-size: 1.02rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.25;
+  }
+
+  .pendente-info {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #374151;
+  }
+
+  .pendente-info .linha {
+    margin-bottom: 3px;
+  }
+
+  .pendente-meta {
+    color: #6b7280;
+    font-size: 0.82rem;
+  }
+
+  .pendente-hash {
+    color: #9ca3af;
+    font-size: 0.75rem;
+    word-break: break-all;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  .status-chip {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .status-pendente {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .status-assinado {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  /* Botões de ação */
+  .acoes {
+    margin-top: 16px;
+  }
+
+  .btn-acao {
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .btn-123 {
+    background-color: var(--azul-123);
+    border-color: var(--azul-123);
+    color: #fff;
+  }
+
+  .btn-123:hover,
+  .btn-123:focus {
+    background-color: var(--azul-123-escuro);
+    border-color: var(--azul-123-escuro);
+    color: #fff;
+  }
+
+  .btn-123:disabled {
+    background-color: #94a3b8;
+    border-color: #94a3b8;
+  }
+
+  .feedback-linha {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    min-height: 1px;
+  }
+
+  .vazio {
+    text-align: center;
+    padding: 40px 16px;
+    color: #6b7280;
+  }
+
+  .vazio .icone {
+    font-size: 2.4rem;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  @media (min-width: 576px) {
+    .pendentes-titulo {
+      font-size: 1.7rem;
+    }
+  }
+</style>
+
+<div class="pendentes-wrap">
+  <h2 class="pendentes-titulo">Relatórios Pendentes</h2>
+  <p class="pendentes-sub">
+    {% if relatorios %}
+    {{ relatorios|length }} relatório{{ 's' if relatorios|length != 1 else '' }}
+    aguardando sua assinatura
+    {% else %}
+    Assinatura digital avançada
+    {% endif %}
+  </p>
+
+  <!-- Status / registro da credencial avançada -->
+  <div class="card credencial-card" id="advanced-signature-component">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+        <h6 class="mb-0 fw-bold" style="color: var(--azul-123)">
+          🔐 Assinatura Avançada
+        </h6>
+        <button
+          type="button"
+          class="btn btn-outline-primary btn-sm"
+          data-signature-register
+        >
+          Registrar dispositivo
+        </button>
+      </div>
+      <p class="mb-2 small text-muted" data-signature-status>
+        Verificando credencial...
+      </p>
+      <ul class="small mb-0 ps-3" data-signature-credentials>
+        <li class="text-muted">Nenhuma credencial registrada.</li>
+      </ul>
+    </div>
+  </div>
+
+  {% if not relatorios %}
+  <div class="card pendente-card">
+    <div class="card-body vazio">
+      <span class="icone">✅</span>
+      Nenhum relatório pendente de assinatura no momento.
+    </div>
+  </div>
+  {% else %}
+  <div class="d-flex flex-column gap-3">
+    {% for item in relatorios %}
+    <div class="card pendente-card" data-report-row="{{ item.id }}">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <span class="doc-tipo">
+            📄 {{ item.document_type or "Relatório Técnico" }}
+          </span>
+          <span class="status-chip status-pendente" data-status-badge>
+            Pendente
+          </span>
+        </div>
+
+        <div class="pendente-info">
+          <div class="linha">
+            <strong>Cliente:</strong>
+            {{ item.cliente.nome if item.cliente else "Não informado" }}
+            {% if item.cliente and item.cliente.cpf %} · {{ item.cliente.cpf }}{%
+            endif %}
+          </div>
+          <div class="linha pendente-meta">
+            {{ item.timestamp | datetimeformat('%d/%m/%Y %H:%M') }}
+            {% if item.created_by_name %} · por {{ item.created_by_name }}{% endif %}
+          </div>
+          <div class="pendente-hash">
+            Hash: {{ (item.document_hash or "")[:24] }}…
+          </div>
+        </div>
+
+        <div class="acoes d-grid gap-2 d-sm-flex">
+          {% if item.pdf_url %}
+          <a
+            href="{{ item.pdf_url }}"
+            target="_blank"
+            rel="noopener"
+            class="btn btn-outline-secondary btn-acao flex-sm-fill"
+          >
+            👁️ Ver PDF
+          </a>
+          {% endif %}
+          <button
+            type="button"
+            class="btn btn-123 btn-acao flex-sm-fill"
+            data-sign-button
+            data-report-id="{{ item.id }}"
+            data-document-hash="{{ item.document_hash }}"
+          >
+            ✍️ Assinar
+          </button>
+        </div>
+
+        <div class="feedback-linha" data-sign-feedback></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="../static/js/components/advancedSignatureComponent.js"></script>
+<script src="../static/js/assinaturaPendentes.js"></script>
+{% endblock %}

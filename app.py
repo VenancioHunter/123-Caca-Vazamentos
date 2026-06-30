@@ -1,5 +1,6 @@
-﻿from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+﻿from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
 import pyrebase
+import requests
 from functools import wraps
 from datetime import datetime, timedelta
 import time
@@ -1837,6 +1838,31 @@ def relatorio_tecnico_classico():
         signature_mode='classica',
     )
 
+
+def _listar_tecnicos():
+    """Retorna {uid: dados} de todos os usuÃ¡rios com papel 'tecnico'."""
+    all_users = db.child("users").get().val() or {}
+    return {
+        uid: user
+        for uid, user in all_users.items()
+        if isinstance(user, dict) and user.get('role') == 'tecnico'
+    }
+
+
+@app.route('/relatorio_atendente', methods=['GET', 'POST'])
+@check_roles(['user', 'admin'])
+def relatorio_atendente():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    # Atendente monta o relatÃ³rio e atribui a um tÃ©cnico para assinar
+    return render_template(
+        'relatorio_tecnico.html',
+        tecnico={},
+        tecnicos=_listar_tecnicos(),
+        signature_mode='atribuir',
+    )
+
 @app.route('/orcamento', methods=['GET', 'POST'])
 def orcamento():
    
@@ -2607,20 +2633,37 @@ def upload_pdf():
 
     file.stream.seek(0)
 
-    # Salvar PDF no Storage
+    # Identificar autor (quem enviou) e seu papel
+    autor_id = session.get("user")
+    autor_role = None
+    if autor_id:
+        autor_data = db.child("users").child(autor_id).get().val() or {}
+        autor_role = autor_data.get("role")
 
-    # Identificar técnico logado
+    # TÃ©cnico responsÃ¡vel: atribuÃ­do (fluxo do atendente) ou o prÃ³prio tÃ©cnico logado
+    tecnico_user_id = (request.form.get("tecnico_user_id") or "").strip() or None
+    if tecnico_user_id:
+        tecnico_data = db.child("users").child(tecnico_user_id).get().val() or {}
+        if tecnico_data.get("role") != "tecnico":
+            return jsonify({"status": "error", "message": "Técnico atribuído inválido"}), 400
+        tecnico_nome = tecnico_data.get("nome_relatorio") or tecnico_data.get("name")
+    else:
+        tecnico_user_id = autor_id
+        tecnico_nome = session.get("name")
 
     relatorio_data = {
         "pdf_url": None,
         "filename": f"relatorios/{int(time.time())}.pdf",
-        "tecnico": session.get("name"),
-        "tecnico_user_id": session.get("user"),
+        "tecnico": tecnico_nome,
+        "tecnico_user_id": tecnico_user_id,
         "cliente": cliente,
         "document_type": request.form.get("document_type") or "Relatório Técnico",
         "timestamp": int(time.time()),
         "document_hash": AdvancedSignatureComponent.hash_bytes(file.read()),
-        "signature_status": "pending" if session.get("user") else "unsigned"
+        "signature_status": "pending" if tecnico_user_id else "unsigned",
+        "created_by": autor_id,
+        "created_by_role": autor_role,
+        "created_by_name": session.get("name"),
     }
 
     file.stream.seek(0)
@@ -2640,6 +2683,102 @@ def upload_pdf():
             "document_hash": relatorio_data["document_hash"],
         }
     )
+
+
+@app.route("/relatorios/<report_id>/pdf_original", methods=["GET"])
+@check_roles(['tecnico', 'admin'])
+def relatorio_pdf_original(report_id):
+    """Proxy same-origin para o PDF original do Storage (evita CORS no carimbo)."""
+    report = db.child("relatorios").child(report_id).get().val()
+    if not report:
+        return jsonify({"status": "error", "message": "Relatório não encontrado"}), 404
+
+    if session.get("role") != "admin" and report.get("tecnico_user_id") != session.get("user"):
+        return jsonify({"status": "error", "message": "Relatório não pertence a você"}), 403
+
+    pdf_url = report.get("pdf_url") or report.get("url")
+    if not pdf_url:
+        return jsonify({"status": "error", "message": "PDF não disponível"}), 404
+
+    try:
+        upstream = requests.get(pdf_url, timeout=30)
+        upstream.raise_for_status()
+    except requests.RequestException as exc:
+        return jsonify({"status": "error", "message": f"Falha ao obter PDF: {exc}"}), 502
+
+    return Response(upstream.content, mimetype="application/pdf")
+
+
+@app.route("/upload_signed_pdf", methods=["POST"])
+@check_roles(['tecnico'])
+def upload_signed_pdf():
+    """Recebe o PDF jÃ¡ carimbado pelo tÃ©cnico e o publica como versÃ£o assinada."""
+    report_id = (request.form.get("report_id") or "").strip()
+    file = request.files.get("pdf")
+    if not report_id or not file or file.filename == "":
+        return jsonify({"status": "error", "message": "Dados incompletos"}), 400
+
+    report = db.child("relatorios").child(report_id).get().val()
+    if not report:
+        return jsonify({"status": "error", "message": "Relatório não encontrado"}), 404
+
+    if report.get("tecnico_user_id") != session.get("user"):
+        return jsonify({"status": "error", "message": "Relatório não pertence a você"}), 403
+
+    filename = f"relatorios/assinados/{report_id}.pdf"
+    storage.child(filename).put(file)
+    signed_url = storage.child(filename).get_url(None)
+
+    db.child("relatorios").child(report_id).update({
+        "signed_pdf_url": signed_url,
+        "signed_pdf_filename": filename,
+    })
+
+    return jsonify({"status": "ok", "signed_pdf_url": signed_url})
+
+
+@app.route('/relatorios_pendentes')
+@check_roles(['tecnico'])
+def relatorios_pendentes():
+    uid = session.get('user')
+    relatorios = db.child("relatorios").get().val() or {}
+
+    lista = []
+    for key, item in relatorios.items():
+        if not isinstance(item, dict):
+            continue
+        if item.get("tecnico_user_id") == uid and item.get("signature_status") == "pending":
+            registro = dict(item)
+            registro["id"] = key
+            lista.append(registro)
+
+    lista.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+    return render_template("relatorios_pendentes.html", relatorios=lista)
+
+
+@app.route('/relatorios_atribuidos')
+@check_roles(['user', 'tecnico', 'admin'])
+def relatorios_atribuidos():
+    uid = session.get('user')
+    role = session.get('role')
+    relatorios = db.child("relatorios").get().val() or {}
+
+    lista = []
+    for key, item in relatorios.items():
+        if not isinstance(item, dict):
+            continue
+        incluir = (
+            role == 'admin'
+            or (role == 'tecnico' and item.get("tecnico_user_id") == uid)
+            or (role == 'user' and item.get("created_by") == uid)
+        )
+        if incluir:
+            registro = dict(item)
+            registro["id"] = key
+            lista.append(registro)
+
+    lista.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+    return render_template("relatorios_atribuidos.html", relatorios=lista, role=role)
 
 
 @app.template_filter('datetime')

@@ -261,6 +261,7 @@ async function gerarPDF() {
     let cpf;
     let tecnicoNome = "";
     let tecnicoCNPJ = "";
+    let tecnicoUserId = "";
 
     /*try {
         // Definir logo
@@ -639,12 +640,12 @@ async function gerarPDF() {
         //const linhasTextoGaramtiaDois = pdf.splitTextToSize( garantiaDois, larguraMaximaLinha);
         //pdf.text(linhasTextoGaramtiaDois, 10, 255);
 
-        // Obter o técnico selecionado e o CNPJ
-        const selectTecnico = document.getElementById('tecnico');
-        const tecnicoSelecionado = selectTecnico.options[selectTecnico.selectedIndex];
-        tecnicoNome = tecnicoSelecionado.value; // Nome do técnico
-        tecnicoCNPJ = tecnicoSelecionado.getAttribute('data-cnpj'); // CNPJ do técnico
-        const imagemAssinatura = tecnicoSelecionado.getAttribute('data-imagem');
+        // Obter o técnico selecionado (nome/CNPJ e, no modo atribuir, o UID)
+        const tecnicoInfo = window.obterTecnicoSelecionado('tecnico');
+        tecnicoNome = tecnicoInfo.nome; // Nome do técnico
+        tecnicoCNPJ = tecnicoInfo.cnpj; // CNPJ do técnico
+        tecnicoUserId = tecnicoInfo.userId; // UID do técnico (modo atribuir)
+        const imagemAssinatura = null;
         /*
         if (imagemAssinatura) {
             const imagemAssinaturaURL = `../static/img/${imagemAssinatura}`;
@@ -851,7 +852,17 @@ async function gerarPDF() {
         const pdfBlob = pdf.output("blob");
         const downloadFilename = `Relatorio_Tecnico_${nome}.pdf`;
 
-        if (window.relatorioSignatureComponent) {
+        if (window.relatorioSignatureMode === "atribuir") {
+            // Atendente: envia para o técnico assinar depois (status pendente)
+            await window.enviarRelatorioParaAssinatura({
+                pdfBlob,
+                nome,
+                cpf,
+                documentType: "Relatório Técnico - Vistoria",
+                tecnicoUserId,
+            });
+            alert("Relatório enviado para assinatura do técnico responsável.");
+        } else if (window.relatorioSignatureComponent) {
             window.relatorioSignatureComponent.config.buildSignedPresentationBlob = async ({ signatureData, originalBlob }) => {
                 if (!signatureData || signatureData.valid !== true) {
                     return originalBlob;

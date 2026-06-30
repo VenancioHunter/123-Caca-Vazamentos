@@ -214,12 +214,12 @@ async function gerarReparoPDF() {
         //const linhasTextoGaramtiaDois = pdf.splitTextToSize( garantiaDois, larguraMaximaLinha);
         //pdf.text(linhasTextoGaramtiaDois, 10, 255);
 
-        // Obter o técnico selecionado e o CNPJ
-        const selectTecnico = document.getElementById('tecnicoreparo');
-        const tecnicoSelecionado = selectTecnico.options[selectTecnico.selectedIndex];
-        const tecnicoNome = tecnicoSelecionado.value; // Nome do técnico
-        const tecnicoCNPJ = tecnicoSelecionado.getAttribute('data-cnpj'); // CNPJ do técnico
-        const imagemAssinatura = tecnicoSelecionado.getAttribute('data-imagem');
+        // Obter o técnico selecionado (nome/CNPJ e, no modo atribuir, o UID)
+        const tecnicoInfo = window.obterTecnicoSelecionado('tecnicoreparo');
+        const tecnicoNome = tecnicoInfo.nome; // Nome do técnico
+        const tecnicoCNPJ = tecnicoInfo.cnpj; // CNPJ do técnico
+        // A assinatura visual é aplicada depois pelo técnico (carimbo avançado)
+        const imagemAssinatura = null;
 
         if (imagemAssinatura) {
             const imagemAssinaturaURL = `../static/img/${imagemAssinatura}`;
@@ -321,6 +321,25 @@ async function gerarReparoPDF() {
 
     } catch (error) {
         console.warn("Erro ao carregar uma ou mais imagens:", error);
+    }
+
+    if (window.relatorioSignatureMode === "atribuir") {
+        // Atendente: envia para o técnico assinar depois (status pendente)
+        try {
+            const tecnicoInfo = window.obterTecnicoSelecionado('tecnicoreparo');
+            await window.enviarRelatorioParaAssinatura({
+                pdfBlob: pdf.output("blob"),
+                nome,
+                cpf: document.getElementById("cpf").value,
+                documentType: "Laudo de Reparo",
+                tecnicoUserId: tecnicoInfo.userId,
+            });
+            alert("Relatório enviado para assinatura do técnico responsável.");
+        } catch (err) {
+            console.error("Falha ao enviar laudo de reparo:", err);
+            alert(err.message || "Erro ao enviar o relatório para assinatura.");
+        }
+        return;
     }
 
     // Salvar PDF

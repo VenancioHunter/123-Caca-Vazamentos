@@ -268,11 +268,10 @@ async function gerarReciboPDF() {
         );
     }
 
-    const selectTecnico = document.getElementById("tecnicorecibo");
-    const tecnicoSelecionado = selectTecnico.options[selectTecnico.selectedIndex];
-    const tecnicoNome = tecnicoSelecionado.value;
-    const tecnicoCNPJ = tecnicoSelecionado.getAttribute("data-cnpj");
-    const imagemAssinatura = tecnicoSelecionado.getAttribute("data-imagem");
+    const tecnicoInfo = window.obterTecnicoSelecionado("tecnicorecibo");
+    const tecnicoNome = tecnicoInfo.nome;
+    const tecnicoCNPJ = tecnicoInfo.cnpj;
+    const modoAtribuir = window.relatorioSignatureMode === "atribuir";
 
     if (fimObservacao > 244) {
         adicionarRodape();
@@ -280,17 +279,8 @@ async function gerarReciboPDF() {
         adicionarCabecalho();
     }
 
-    if (imagemAssinatura) {
-        try {
-            const imgAssinatura = await carregarImagemRecibo(
-                `../static/img/${imagemAssinatura}`,
-            );
-            pdf.addImage(imgAssinatura, "PNG", 15, 262, 45, 20);
-        } catch (e) {
-            const assinaturaImagem = gerarAssinaturaRecibo(tecnicoNome);
-            pdf.addImage(assinaturaImagem, "PNG", 24, 266, 45, 20);
-        }
-    } else {
+    // No modo atribuir a assinatura é aplicada depois pelo técnico (carimbo avançado)
+    if (!modoAtribuir) {
         const assinaturaImagem = gerarAssinaturaRecibo(tecnicoNome);
         pdf.addImage(assinaturaImagem, "PNG", 24, 266, 45, 20);
     }
@@ -300,5 +290,24 @@ async function gerarReciboPDF() {
     pdf.text(`CNPJ ${tecnicoCNPJ}`, 24, 290);
 
     adicionarRodape();
+
+    if (modoAtribuir) {
+        // Atendente: envia para o técnico assinar depois (status pendente)
+        try {
+            await window.enviarRelatorioParaAssinatura({
+                pdfBlob: pdf.output("blob"),
+                nome,
+                cpf,
+                documentType: "Recibo",
+                tecnicoUserId: tecnicoInfo.userId,
+            });
+            alert("Recibo enviado para assinatura do técnico responsável.");
+        } catch (err) {
+            console.error("Falha ao enviar recibo:", err);
+            alert(err.message || "Erro ao enviar o recibo para assinatura.");
+        }
+        return;
+    }
+
     pdf.save(`Recibo_${nome}.pdf`);
 }
