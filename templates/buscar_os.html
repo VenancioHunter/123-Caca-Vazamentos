@@ -1,0 +1,124 @@
+{% extends "layout.html" %} {% block title %}Buscar Ordem de Serviço{% endblock
+%} {% block content %}
+<div class="container my-4">
+  <div class="text-center mb-4">
+    <h2>Buscar Ordem de Serviço</h2>
+    <p class="text-muted">
+      Busque por número da OS, CPF/CNPJ, telefone ou nome
+    </p>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <form method="post" action="{{ url_for('resultado_busca_os') }}">
+        <div class="row g-2">
+          <div class="col-md-10">
+            <input
+              type="text"
+              class="form-control"
+              name="termo"
+              placeholder="Ex: 1234, 12.345.678/0001-23, (62) 99999-9999, João"
+              value="{{ termo }}"
+              required
+            />
+          </div>
+          <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary">Buscar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if termo %}
+  <div class="mb-3"><strong>Busca:</strong> {{ termo }}</div>
+  {% endif %} {% if resultados %}
+  <div class="row">
+    {% for os in resultados %}
+    <div class="col-12 mb-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between flex-wrap mb-2">
+            <h5 class="mb-1">OS Nº {{ os.numero_os }}</h5>
+            <span class="badge bg-secondary">{{ os.city }}</span>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <p class="mb-1">
+                <strong>Nome:</strong> {{ os.name or 'Não informado' }}
+              </p>
+              <p class="mb-1">
+                <strong>CPF/CNPJ:</strong> {{ os.cpfcnpj or 'Não informado' }}
+              </p>
+              <p class="mb-1">
+                <strong>Telefone:</strong> {{ os.phone or 'Não informado' }}
+              </p>
+              <p class="mb-1">
+                <strong>Serviço:</strong> {{ os.service or 'Não informado' }}
+              </p>
+            </div>
+
+            <div class="col-md-6">
+              <p class="mb-1">
+                <strong>Valor:</strong> R$ {{ os.newprice or '0.00' }}
+              </p>
+              <p class="mb-1">
+                <strong>Início:</strong> {{ os.start_datetime or 'Não informado'
+                }}
+              </p>
+              <p class="mb-1">
+                <strong>Término:</strong> {{ os.end_datetime or 'Não informado'
+                }}
+              </p>
+              <p class="mb-1">
+                <strong>Status pagamento:</strong> {{ os.status_paymment or 'Não
+                informado' }}
+              </p>
+            </div>
+          </div>
+
+          {% if os.address %}
+          <div class="mt-3 p-3 bg-light rounded">
+            <strong>Endereço</strong>
+            <p class="mb-1">
+              <strong>Bairro:</strong> {{ os.address.bairro or '' }}
+            </p>
+            <p class="mb-1"><strong>Rua:</strong> {{ os.address.rua or '' }}</p>
+            <p class="mb-1">
+              <strong>Número:</strong> {{ os.address.numero or '' }}
+            </p>
+            <p class="mb-1">
+              <strong>Complemento:</strong> {{ os.address.complemento or '' }}
+            </p>
+            <p class="mb-1">
+              <strong>Localização:</strong>
+              {% if os.address.localizacao %}
+              <a href="{{ os.address.localizacao }}" target="_blank"
+                >{{ os.address.localizacao }}</a
+              >
+              {% else %} Não informada {% endif %}
+            </p>
+          </div>
+          {% endif %}
+
+          <div class="mt-3">
+            <a
+              href="{{ url_for('os_atendente', city=os.city, year=os.year, month=os.month, day=os.day, id=os.os_id) }}"
+              class="btn btn-outline-primary btn-sm"
+            >
+              Ver OS
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif termo %}
+  <div class="alert alert-warning">
+    Nenhuma ordem de serviço encontrada para essa busca.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

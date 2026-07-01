@@ -1,0 +1,733 @@
+{% extends "layout.html" %} {% block title %}Buscar Atendimento{% endblock %} {%
+block content %}
+<script src="../static/js/formatarValor.js"></script>
+
+<style>
+  .cabecalho-agenda {
+    background: white;
+    padding: 25px 20px;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-top: 30px;
+    margin-bottom: 30px;
+  }
+
+  .cabecalho-agenda h1 {
+    color: #0d5590;
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+
+  .cabecalho-agenda h3 {
+    color: #0d5590;
+    font-weight: 600;
+    margin-bottom: 0;
+  }
+
+  .busca-card {
+    background: white;
+    padding: 18px;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 28px;
+  }
+
+  .card-atendimento {
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
+    border: none;
+    background: white;
+  }
+
+  .card-atendimento .card-title {
+    color: #0d5590;
+    font-weight: bold;
+    font-size: 20px;
+  }
+
+  .card-atendimento .list-group-item {
+    font-size: 15px;
+    padding: 10px 15px;
+  }
+
+  .status-label {
+    font-size: 14px;
+    margin-top: 8px;
+    font-weight: 600;
+    color: #444;
+  }
+
+  .btn-info,
+  .btn-warning,
+  .btn-danger {
+    font-weight: bold;
+    padding: 10px 14px;
+    border-radius: 12px;
+  }
+
+  .btn-info {
+    background: #0d5590;
+    border: none;
+  }
+
+  .btn-info:hover {
+    background: #083a63;
+  }
+
+  .btn-warning {
+    color: #000;
+    font-weight: 700;
+  }
+
+  .btn-danger {
+    background: #c12525;
+    border: none;
+  }
+
+  .btn-danger:hover {
+    background: #8f1c1c;
+  }
+
+  .modal-backdrop.show {
+    opacity: 0.45 !important;
+  }
+
+  .modal-content {
+    border-radius: 18px;
+    border: none;
+    overflow: hidden;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
+  }
+
+  .modal-header {
+    background: linear-gradient(135deg, #0d5590, #083a63);
+    color: #fff;
+    padding: 18px 24px;
+  }
+
+  .modal-title {
+    font-weight: 700;
+    font-size: 1.3rem;
+  }
+
+  .modal-header .btn-close,
+  .modal-header .close span {
+    filter: brightness(200%) invert(1);
+  }
+
+  .modal-body {
+    background: #f7f9fb;
+    padding: 28px 22px;
+  }
+
+  .modal-body .form-group label {
+    color: #0d5590;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .modal-body .form-control,
+  .modal-body .form-select {
+    border-radius: 12px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    font-size: 0.98rem;
+    transition: 0.2s ease-in-out;
+  }
+
+  .modal-body .form-control:focus,
+  .modal-body .form-select:focus {
+    border-color: #0d5590;
+    box-shadow: 0 0 0 0.15rem rgba(13, 85, 144, 0.25);
+  }
+
+  .endereco-box {
+    background-color: #e8ecef;
+    border-radius: 14px;
+    padding: 18px;
+    margin-top: 15px;
+    margin-bottom: 20px;
+  }
+
+  .endereco-box h5 {
+    color: #0d5590;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .confirmar-os-btn {
+    background: #0d5590 !important;
+    border: none !important;
+    padding: 14px;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    transition: 0.2s;
+    width: 100%;
+  }
+
+  .confirmar-os-btn:hover {
+    background: #083a63 !important;
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 768px) {
+    .card-footer {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card-footer .btn {
+      width: 100%;
+    }
+  }
+</style>
+
+<div class="cabecalho-agenda text-center">
+  <h1>Buscar Atendimento</h1>
+  <h3>Pesquise por nome, telefone, serviço, canal ou status</h3>
+</div>
+
+<div class="busca-card">
+  <form method="post" action="{{ url_for('resultado_busca_atendimento') }}">
+    <div class="row g-2">
+      <div class="col-md-10 mb-2 mb-md-0">
+        <input
+          type="text"
+          class="form-control"
+          name="termo"
+          placeholder="Ex: João, 62999999999, Conta Alta, google, Agendado"
+          value="{{ termo }}"
+          required
+        />
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-info w-100">Buscar</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% if termo %}
+<div class="cabecalho-agenda text-center py-3">
+  <h3>Resultado da busca: {{ termo }}</h3>
+</div>
+{% endif %} {% if resultados %} {% for item in resultados %}
+<div class="card card-atendimento mb-4">
+  <div class="card-body">
+    <h5 class="card-title">
+      {{ item.name if item.name else 'Não informado' }}
+    </h5>
+
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item">📍 Cidade: <b>{{ item.city }}</b></li>
+      <li class="list-group-item">
+        📞 Telefone: <b>{{ item.phone if item.phone else 'Não informado' }}</b>
+      </li>
+      <li class="list-group-item">
+        🔧 Serviço:
+        <b>{{ item.service if item.service else 'Não informado' }}</b>
+      </li>
+      <li class="list-group-item">
+        💰 Valor: <b>{{ item.price if item.price else '0.00' }}</b>
+      </li>
+      <li class="list-group-item">
+        📣 Canal: <b>{{ item.canal if item.canal else 'Não informado' }}</b>
+      </li>
+      <li class="list-group-item">
+        🕒 Data: <b>{{ item.day }}/{{ item.month }}/{{ item.year }}</b>
+      </li>
+      <li class="list-group-item">
+        📝 Obs.: {{ item.details if item.details else 'Sem observações' }}
+      </li>
+    </ul>
+
+    <div class="text-end status-label">
+      <b>Status:</b> {{ item.status if item.status else 'Não informado' }}
+    </div>
+  </div>
+
+  <div class="card-footer d-flex justify-content-between">
+    <button
+      type="button"
+      class="btn btn-info"
+      data-toggle="modal"
+      data-target="#osModal"
+      data-tipo="os"
+      data-city="{{ item.city }}"
+      data-name="{{ item.name|default('', true) }}"
+      data-phone="{{ item.phone|default('', true) }}"
+      data-service="{{ item.service|default('', true) }}"
+      data-price="{{ item.price|default('', true) }}"
+      data-idrecord="{{ item.attendance_id }}"
+    >
+      Gerar OS
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-warning"
+      data-toggle="modal"
+      data-target="#osModal"
+      data-tipo="retorno"
+      data-city="{{ item.city }}"
+      data-name="{{ item.name|default('', true) }}"
+      data-phone="{{ item.phone|default('', true) }}"
+      data-service="{{ item.service|default('', true) }}"
+      data-price="{{ item.price|default('', true) }}"
+      data-idrecord="{{ item.attendance_id }}"
+    >
+      Retorno
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-danger"
+      data-toggle="modal"
+      data-target="#osModal"
+      data-tipo="reparo"
+      data-city="{{ item.city }}"
+      data-name="{{ item.name|default('', true) }}"
+      data-phone="{{ item.phone|default('', true) }}"
+      data-service="{{ item.service|default('', true) }}"
+      data-price="{{ item.price|default('', true) }}"
+      data-idrecord="{{ item.attendance_id }}"
+    >
+      Reparo
+    </button>
+  </div>
+</div>
+{% endfor %}
+
+<div
+  class="modal fade"
+  id="osModal"
+  tabindex="-1"
+  role="dialog"
+  aria-labelledby="osModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="osModalLabel">Gerar Ordem de Serviço</h5>
+        <button
+          type="button"
+          class="close btn-close"
+          data-dismiss="modal"
+          aria-label="Close"
+        >
+          <span aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form id="osForm" method="post" action="/gerar_os">
+          <input id="osIdRecord" name="idRecord" hidden />
+
+          <div class="form-group mb-3">
+            <label for="osCity">Cidade</label>
+            <input
+              type="text"
+              class="form-control"
+              id="osCity"
+              name="city"
+              readonly
+            />
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="osName">Cliente</label>
+            <input
+              type="text"
+              class="form-control"
+              id="osName"
+              name="name"
+              oninput="capitalizarNome(this)"
+            />
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="osCPFCNPJ">CPF/CNPJ</label>
+            <input
+              type="text"
+              class="form-control"
+              id="osCPFCNPJ"
+              name="cpfcnpj"
+              oninput="formatarCpfCnpj(this)"
+            />
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="osPhone">Telefone</label>
+            <input
+              type="text"
+              class="form-control"
+              id="osPhone"
+              name="phone"
+              readonly
+            />
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="osServico">Serviço</label>
+            <input
+              type="text"
+              class="form-control"
+              id="osServico"
+              name="service"
+              readonly
+            />
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="osPrice">Valor</label>
+            <input
+              type="text"
+              class="form-control"
+              id="osPrice"
+              name="price"
+              readonly
+            />
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="osPriceFinal">Valor Final</label>
+            <input
+              type="text"
+              class="form-control"
+              id="osPriceFinal"
+              name="priceservice"
+              required
+            />
+          </div>
+
+          <div class="endereco-box mt-4">
+            <h5>Endereço</h5>
+
+            <!--<div class="form-group mb-3">
+                <label for="osCep">CEP</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="osCep"
+                  name="cep"
+                  maxlength="9"
+                  oninput="mascaraCep(this)"
+                  onblur="buscarCep(this.value)"
+                />
+              </div>-->
+
+            <div class="form-group mb-3">
+              <label for="osBairro">Bairro/Setor</label>
+              <input
+                type="text"
+                class="form-control"
+                id="osBairro"
+                name="bairro"
+              />
+            </div>
+
+            <div class="form-group mb-3">
+              <label for="osRua">Rua</label>
+              <input type="text" class="form-control" id="osRua" name="rua" />
+            </div>
+
+            <div class="form-group mb-3">
+              <label for="osNumeroCasa">Nº</label>
+              <input
+                type="text"
+                class="form-control"
+                id="osNumeroCasa"
+                name="numerocasa"
+              />
+            </div>
+
+            <div class="form-group mb-3">
+              <label for="osEnderecoComplemento">Complemento</label>
+              <input
+                type="text"
+                class="form-control"
+                id="osEnderecoComplemento"
+                name="enderecocomplemento"
+              />
+            </div>
+
+            <div class="form-group mb-3">
+              <label for="osLocalizacao">Localização</label>
+              <input
+                type="text"
+                class="form-control"
+                id="osLocalizacao"
+                name="localizacao"
+              />
+            </div>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="osDate">Data</label>
+            <input
+              type="date"
+              class="form-control"
+              id="osDate"
+              name="dateos"
+              required
+            />
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="osStartTime">Hora de Início</label>
+            <input
+              type="time"
+              class="form-control"
+              id="osStartTime"
+              name="start_time"
+              required
+            />
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="osEndTime">Hora de Término</label>
+            <input
+              type="time"
+              class="form-control"
+              id="osEndTime"
+              name="end_time"
+              required
+            />
+          </div>
+
+          <div class="form-group mb-3">
+            <select
+              class="form-select tecnico-select"
+              id="osTechnician"
+              name="tecnico"
+            >
+              <option selected value="">Selecionar Técnico</option>
+              {% for tecnico_id, tecnico in tecnicos.items() %}
+              <option value="{{ tecnico_id }}">{{ tecnico.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <input type="text" value="" id="buscaDateHidden" name="date" hidden />
+
+          <button
+            type="submit"
+            id="confirmaros"
+            class="btn btn-primary confirmar-os-btn"
+          >
+            Confirmar OS
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% elif termo %}
+<p class="text-center mt-5" style="font-size: 18px; color: #888">
+  Nenhum atendimento encontrado para a busca informada.
+</p>
+{% endif %}
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+  $("#osModal").on("show.bs.modal", function (event) {
+    var button = $(event.relatedTarget);
+    var tipo = button.data("tipo") || "os";
+
+    var city = button.data("city");
+    var name = button.data("name");
+    var phone = button.data("phone");
+    var price = button.data("price");
+    var servicoOriginal = button.data("service");
+    var idRecord = button.data("idrecord");
+
+    var modal = $(this);
+    modal.find("#osIdRecord").val(idRecord);
+    modal.find("#osCity").val(city);
+    modal.find("#osName").val(name);
+    modal.find("#osPhone").val(phone);
+    modal.find("#osPrice").val(price);
+
+    var servicoField = modal.find("#osServico");
+    var titulo = "Gerar Ordem de Serviço";
+    var textoBotao = "Confirmar OS";
+
+    if (tipo === "reparo") {
+      servicoField.val("Reparo");
+      textoBotao = "Confirmar OS Reparo";
+    } else if (tipo === "retorno") {
+      servicoField.val("Retorno");
+      textoBotao = "Confirmar Retorno";
+    } else {
+      servicoField.val(servicoOriginal);
+      textoBotao = "Confirmar OS";
+    }
+
+    modal.find("#osModalLabel").text(titulo);
+    modal.find("#confirmaros").text(textoBotao);
+    modal.find("#osPriceFinal").val("");
+    modal.find("#osCPFCNPJ").val("");
+    modal.find("#osBairro").val("");
+    modal.find("#osRua").val("");
+    modal.find("#osNumeroCasa").val("");
+    modal.find("#osEnderecoComplemento").val("");
+    modal.find("#osLocalizacao").val("");
+  });
+</script>
+
+<script>
+  function handleSwitchChange(date1, startTime1, endTime1, technician1, city1) {
+    const data = {
+      date: date1,
+      startTime: startTime1,
+      endTime: endTime1,
+      technician: technician1,
+      city: city1,
+    };
+
+    fetch("/verifica_agenda", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+      .then((response) => {
+        if (response.ok) {
+          document.getElementById("confirmaros").disabled = false;
+          return response.json();
+        } else {
+          return response.json().then((errorData) => {
+            throw new Error(errorData.message);
+          });
+        }
+      })
+      .catch((error) => {
+        document.getElementById("confirmaros").disabled = true;
+        alert(error.message);
+      });
+  }
+
+  function onFieldsChange() {
+    const date = document.getElementById("osDate").value;
+    const startTime = document.getElementById("osStartTime").value;
+    const endTime = document.getElementById("osEndTime").value;
+    const technician = document.getElementById("osTechnician").value;
+    const city = document.getElementById("osCity").value;
+
+    handleSwitchChange(date, startTime, endTime, technician, city);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const technician = document.getElementById("osTechnician");
+    if (technician) {
+      technician.addEventListener("change", onFieldsChange);
+    }
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const DateTime = luxon.DateTime;
+    const nowInSaoPaulo = DateTime.now().setZone("America/Sao_Paulo");
+    const formattedDate = nowInSaoPaulo.toFormat("yyyy-MM-dd");
+
+    const dateInput = document.getElementById("osDate");
+    const hiddenDate = document.getElementById("buscaDateHidden");
+
+    if (dateInput) dateInput.value = formattedDate;
+    if (hiddenDate) hiddenDate.value = formattedDate;
+  });
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    configurarFormatacaoValor("osPriceFinal");
+  });
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const selects = document.querySelectorAll(".tecnico-select");
+    const botoes = document.querySelectorAll(".confirmar-os-btn");
+
+    selects.forEach((select, index) => {
+      const botao = botoes[index];
+      botao.disabled = true;
+
+      select.addEventListener("change", function () {
+        botao.disabled = select.value === "";
+      });
+    });
+  });
+</script>
+
+<script>
+  function mascaraCep(input) {
+    let v = input.value.replace(/\D/g, "");
+    if (v.length > 5) {
+      input.value = v.substring(0, 5) + "-" + v.substring(5, 8);
+    } else {
+      input.value = v;
+    }
+  }
+
+  function formatarCpfCnpj(input) {
+    let valor = input.value.replace(/\D/g, "");
+
+    if (valor.length <= 11) {
+      valor = valor.replace(/^(\d{3})(\d)/, "$1.$2");
+      valor = valor.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
+      valor = valor.replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+    } else {
+      valor = valor.slice(0, 14);
+      valor = valor.replace(/^(\d{2})(\d)/, "$1.$2");
+      valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+      valor = valor.replace(/\.(\d{3})(\d)/, ".$1/$2");
+      valor = valor.replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+    }
+
+    input.value = valor;
+  }
+
+  function buscarCep(cep) {
+    cep = cep.replace(/\D/g, "");
+    if (cep.length !== 8) return;
+
+    fetch(`https://viacep.com.br/ws/${cep}/json/`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.erro) {
+          alert("CEP não encontrado!");
+          return;
+        }
+
+        document.getElementById("osRua").value = data.logradouro || "";
+        document.getElementById("osBairro").value = data.bairro || "";
+      })
+      .catch(() => {
+        alert("Erro ao consultar CEP.");
+      });
+  }
+
+  function capitalizarNome(input) {
+    let palavras = input.value.toLowerCase().split(" ");
+
+    for (let i = 0; i < palavras.length; i++) {
+      if (palavras[i].length > 0) {
+        palavras[i] = palavras[i][0].toUpperCase() + palavras[i].slice(1);
+      }
+    }
+
+    input.value = palavras.join(" ");
+  }
+</script>
+{% endblock %}

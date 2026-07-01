@@ -97,7 +97,13 @@ content %}
     <a class="card-presentation" href="{{ url_for('attendance_records') }}">
       <h5>Registrar Atendimento</h5>
     </a>
+    <a class="card-presentation" href="{{ url_for('buscar_atendimento') }}">
+      <h5>Buscar Atendimento</h5>
+    </a>
 
+    <a class="card-presentation" href="{{ url_for('buscar_os') }}">
+      <h5>Buscar OS</h5>
+    </a>
     <a class="card-presentation" href="{{ url_for('consulta_atendimentos') }}">
       <h5>Atendimentos</h5>
     </a>
@@ -125,8 +131,8 @@ content %}
       <h5>Desempenho</h5>
     </a>
 
-    <a class="card-presentation" href="{{ url_for('bonus_attendant') }}">
-      <h5>Ganhos por Serviço</h5>
+    <a class="card-presentation" href="{{ url_for('attendance_comissao') }}">
+      <h5>Comissão</h5>
     </a>
   </div>
 

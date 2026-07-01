@@ -17,6 +17,8 @@ from core.cities.class_cities import Cities
 from core.advanced_signature_component import AdvancedSignatureComponent
 from core.financeiro.class_financeiro import Financeiro
 from flask_cors import CORS
+import re
+
 
 
 app = Flask(__name__)
@@ -41,6 +43,10 @@ app.jinja_env.filters['datetimeformat'] = datetimeformat
 
 app.jinja_env.filters['datetimeformathour'] = datetimeformathour
 
+def normalize_search_value(value):
+    if value is None:
+        return ""
+    return re.sub(r'\W+', '', str(value)).lower()
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -2984,6 +2990,53 @@ def comissao_atendimento():
         return redirect(url_for('login'))
     return render_template('comissao_atendimento.html')
 
+@app.route('/attendance_comissao', methods=['GET', 'POST'])
+def attendance_comissao():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    return render_template('attendance_comissao.html')
+
+
+@app.route("/attendance_buscar_comissoes", methods=["POST"])
+def attendance_buscar_comissoes():
+    data = request.get_json()
+
+    ano = str(data.get("ano"))
+    mes = f"{int(data.get('mes')):02d}"
+
+    ordens = []
+
+    try:
+        dias = (
+            db.child("financeiro")
+              .child("transactions_confirmadas")
+              .child(ano)
+              .child(mes)
+              .get()
+        )
+
+        if not dias.each():
+            return jsonify({"ordens": []})
+
+        for dia in dias.each():
+            dia_numero = dia.key()
+
+            for transacao_id, item in dia.val().items():
+                if session.get('user') == item['atendente_id']:
+                    # 🔹 Padronização TOTAL para o front
+                    item["id_transaction"] = transacao_id
+                    item["dia"] = dia_numero
+                    item["status"] = "recebido"   # seu filtro espera isso
+                    item["city"] = item.get("city_os")
+                    item["tecnico_nome"] = item.get("atendente")
+
+                    ordens.append(item)
+
+        return jsonify({"ordens": ordens})
+
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
 @app.route("/buscar_comissoes", methods=["POST"])
 def buscar_comissoes():
     data = request.get_json()
@@ -3860,6 +3913,285 @@ def adm_servicos_tecnicos():
         average_ticket_geral_display=format_currency_brl(average_ticket_geral),
     )
 
+@app.route('/buscar_os')
+@check_roles(['user', 'admin'])
+def buscar_os():
+    return render_template('buscar_os.html', resultados=[], termo="")
+
+@app.route('/resultado_busca_os', methods=['GET', 'POST'])
+@check_roles(['user', 'admin'])
+def resultado_busca_os():
+    termo = (request.form.get('termo') or request.args.get('termo') or '').strip()
+    resultados = []
+
+    if not termo:
+        return render_template('buscar_os.html', resultados=[], termo=termo)
+
+    termo_normalizado = normalize_search_value(termo)
+
+    # Dados do usuário logado
+    user_id = session['user']
+    user_data = db.child("users").child(user_id).get().val() or {}
+    role = user_data.get("role", "")
+    cidades_permitidas = user_data.get("cities", []) or []
+
+    ordens_servico = db.child("ordens_servico").get().val() or {}
+
+    for city, years in ordens_servico.items():
+        if not isinstance(years, dict):
+            continue
+
+        # Restrição por permissão
+        if role != 'admin' and city not in cidades_permitidas:
+            continue
+
+        for year, months in years.items():
+            if not isinstance(months, dict):
+                continue
+
+            for month, days in months.items():
+                if not isinstance(days, dict):
+                    continue
+
+                for day, os_items in days.items():
+                    if not isinstance(os_items, dict):
+                        continue
+
+                    for os_id, os_data in os_items.items():
+                        if not isinstance(os_data, dict):
+                            continue
+
+                        numero_os = str(os_data.get("numero_os", "")).strip()
+                        cpfcnpj = str(os_data.get("cpfcnpj", "")).strip()
+                        phone = str(os_data.get("phone", "")).strip()
+                        name = str(os_data.get("name", "")).strip()
+
+                        numero_os_normalizado = normalize_search_value(numero_os)
+                        cpfcnpj_normalizado = normalize_search_value(cpfcnpj)
+                        phone_normalizado = normalize_search_value(phone)
+                        name_normalizado = normalize_search_value(name)
+
+                        encontrou = False
+
+                        # Busca exata por número da OS
+                        if termo_normalizado == numero_os_normalizado:
+                            encontrou = True
+
+                        # Busca exata por CPF/CNPJ
+                        elif termo_normalizado == cpfcnpj_normalizado:
+                            encontrou = True
+
+                        # Busca exata por telefone
+                        elif termo_normalizado == phone_normalizado:
+                            encontrou = True
+
+                        # Busca parcial por nome
+                        elif termo_normalizado in name_normalizado and termo_normalizado != "":
+                            encontrou = True
+
+                        if encontrou:
+                            resultados.append({
+                                "os_id": os_id,
+                                "city": city,
+                                "year": year,
+                                "month": month,
+                                "day": day,
+                                "numero_os": os_data.get("numero_os", ""),
+                                "name": os_data.get("name", ""),
+                                "cpfcnpj": os_data.get("cpfcnpj", ""),
+                                "phone": os_data.get("phone", ""),
+                                "service": os_data.get("service", ""),
+                                "newprice": os_data.get("newprice", ""),
+                                "start_datetime": os_data.get("start_datetime", ""),
+                                "end_datetime": os_data.get("end_datetime", ""),
+                                "status_paymment": os_data.get("status_paymment", ""),
+                                "address": os_data.get("address", {})
+                            })
+
+    resultados.sort(
+        key=lambda x: f"{x['year']}-{x['month']}-{x['day']} {x['start_datetime']}",
+        reverse=True
+    )
+
+    return render_template('buscar_os.html', resultados=resultados, termo=termo)
+
+@app.route('/os_atendente/<city>/<year>/<month>/<day>/<id>', methods=['GET', 'POST'])
+#@check_roles(['admin', 'tecnico'])
+def os_atendente(city, year, month, day, id):
+    get_os = db.child("ordens_servico").child(city).child(year).child(month).child(day).child(id).get().val()
+
+    all_users = db.child("users").get().val() or {}
+    tecnicos = {
+        uid: user for uid, user in all_users.items()
+        if user.get('role') == 'tecnico' and city in user.get('cities', [])
+    }
+
+    date_str = f"{year}-{month}-{day}"
+
+    return render_template(
+        'os_atendente.html',
+        os=get_os,
+        os_id=id,
+        date=date_str,
+        tecnicos=tecnicos
+    )
+
+@app.route('/buscar_atendimento')
+@check_roles(['user', 'admin'])
+def buscar_atendimento():
+    user_id = session['user']
+    user_data = db.child("users").child(user_id).get().val() or {}
+    role = user_data.get("role", "")
+    cidades_permitidas = user_data.get("cities", []) or []
+
+    all_users = db.child("users").get().val() or {}
+
+    if role == "admin":
+        tecnicos = {
+            uid: user for uid, user in all_users.items()
+            if user.get("role") == "tecnico"
+        }
+    else:
+        tecnicos = {
+            uid: user for uid, user in all_users.items()
+            if user.get("role") == "tecnico"
+            and any(c in user.get("cities", []) for c in cidades_permitidas)
+        }
+
+    return render_template(
+        'buscar_atendimento.html',
+        resultados=[],
+        termo="",
+        tecnicos=tecnicos
+    )
+
+@app.route('/resultado_busca_atendimento', methods=['GET', 'POST'])
+@check_roles(['user', 'admin'])
+def resultado_busca_atendimento():
+    termo = (request.form.get('termo') or request.args.get('termo') or '').strip()
+    resultados = []
+
+    user_id = session['user']
+    user_data = db.child("users").child(user_id).get().val() or {}
+    role = user_data.get("role", "")
+    cidades_permitidas = user_data.get("cities", []) or []
+
+    all_users = db.child("users").get().val() or {}
+
+    if role == "admin":
+        tecnicos = {
+            uid: user for uid, user in all_users.items()
+            if user.get("role") == "tecnico"
+        }
+    else:
+        tecnicos = {
+            uid: user for uid, user in all_users.items()
+            if user.get("role") == "tecnico"
+            and any(c in user.get("cities", []) for c in cidades_permitidas)
+        }
+
+    if not termo:
+        return render_template(
+            'buscar_atendimento.html',
+            resultados=[],
+            termo=termo,
+            tecnicos=tecnicos
+        )
+
+    termo_normalizado = normalize_search_value(termo)
+
+    attendance_data = db.child("attendance_records").get().val() or {}
+
+    for city, years in attendance_data.items():
+        if not isinstance(years, dict):
+            continue
+
+        # Restrição por permissão
+        if role != 'admin' and city not in cidades_permitidas:
+            continue
+
+        for year, months in years.items():
+            if not isinstance(months, dict):
+                continue
+
+            for month, days in months.items():
+                if not isinstance(days, dict):
+                    continue
+
+                for day, registros in days.items():
+                    if not isinstance(registros, dict):
+                        continue
+
+                    for attendance_id, attendance in registros.items():
+                        if not isinstance(attendance, dict):
+                            continue
+
+                        name = str(attendance.get("name", "")).strip()
+                        phone = str(attendance.get("phone", "")).strip()
+                        service = str(attendance.get("service", "")).strip()
+                        canal = str(attendance.get("canal", "")).strip()
+                        status = str(attendance.get("status", "")).strip()
+                        details = str(attendance.get("details", "")).strip()
+                        price = str(attendance.get("price", "")).strip()
+                        sexo = str(attendance.get("sexo", "")).strip()
+
+                        name_normalizado = normalize_search_value(name)
+                        phone_normalizado = normalize_search_value(phone)
+                        service_normalizado = normalize_search_value(service)
+                        canal_normalizado = normalize_search_value(canal)
+                        status_normalizado = normalize_search_value(status)
+
+                        encontrou = False
+
+                        # Nome - parcial
+                        if termo_normalizado in name_normalizado and termo_normalizado != "":
+                            encontrou = True
+
+                        # Telefone - exato normalizado
+                        elif termo_normalizado == phone_normalizado:
+                            encontrou = True
+
+                        # Serviço - parcial
+                        elif termo_normalizado in service_normalizado and termo_normalizado != "":
+                            encontrou = True
+
+                        # Canal - parcial
+                        elif termo_normalizado in canal_normalizado and termo_normalizado != "":
+                            encontrou = True
+
+                        # Status - parcial
+                        elif termo_normalizado in status_normalizado and termo_normalizado != "":
+                            encontrou = True
+
+                        if encontrou:
+                            resultados.append({
+                                "attendance_id": attendance_id,
+                                "city": city,
+                                "year": year,
+                                "month": month,
+                                "day": day,
+                                "name": name,
+                                "phone": phone,
+                                "price": price,
+                                "service": service,
+                                "canal": canal,
+                                "sexo": sexo,
+                                "status": status,
+                                "details": details,
+                                "timestamp": attendance.get("timestamp", ""),
+                            })
+
+    resultados.sort(
+        key=lambda x: f"{x['year']}-{x['month']}-{x['day']}",
+        reverse=True
+    )
+
+    return render_template(
+        'buscar_atendimento.html',
+        resultados=resultados,
+        termo=termo,
+        tecnicos=tecnicos
+    )
 
 
 if __name__ == '__main__':
