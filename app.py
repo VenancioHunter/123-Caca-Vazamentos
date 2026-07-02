@@ -594,10 +594,15 @@ def gerar_os():
     start_datetime = datetime.strptime(f"{date} {start_time}", '%Y-%m-%d %H:%M')
     end_datetime = datetime.strptime(f"{date} {end_time}", '%Y-%m-%d %H:%M')
 
-    data_datetime = datetime.strptime(date_filter, '%d/%m/%Y')
-    # Formatar o objeto datetime no formato desejado aaaa-mm-dd
-    data_formatada = data_datetime.strftime('%Y-%m-%d')
-    # Check availability for each selected technician
+    try:
+        if "-" in date_filter:
+            data_datetime = datetime.strptime(date_filter, "%Y-%m-%d")
+        else:
+            data_datetime = datetime.strptime(date_filter, "%d/%m/%Y")
+
+        data_formatada = data_datetime.strftime("%Y-%m-%d")
+    except ValueError:
+        return "Formato de data inválido.", 400
 
     # Save the new OS to the database
 
@@ -4192,6 +4197,7 @@ def resultado_busca_atendimento():
         termo=termo,
         tecnicos=tecnicos
     )
+
 
 
 if __name__ == '__main__':

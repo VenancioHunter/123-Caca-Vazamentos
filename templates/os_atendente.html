@@ -1,0 +1,989 @@
+{% extends 'layout.html' %} {% block title %}Ordem de Serviço{% endblock %} {%
+block content %}
+
+<style>
+  .os-page {
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  .os-main-card {
+    border: none;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  }
+
+  .os-topbar {
+    background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+    color: #fff;
+    padding: 18px 20px;
+  }
+
+  .os-number-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.14);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+
+  .os-city {
+    margin-top: 10px;
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .os-card-body {
+    padding: 20px;
+  }
+
+  .os-time-box {
+    text-align: right;
+    font-weight: 700;
+    margin-bottom: 18px;
+  }
+
+  .os-address-box {
+    background: #f2f2f2;
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .os-price {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #198754;
+  }
+
+  .os-actions .btn {
+    min-width: 140px;
+  }
+
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1050;
+  }
+
+  .popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1060;
+    background: #fff;
+    border-radius: 14px;
+    padding: 22px 24px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    min-width: 220px;
+  }
+
+  @media (max-width: 768px) {
+    .os-card-body,
+    .os-topbar {
+      padding: 16px;
+    }
+
+    .os-time-box {
+      text-align: left;
+    }
+
+    .os-actions .btn {
+      width: 100%;
+    }
+
+    .os-price {
+      font-size: 1.35rem;
+    }
+  }
+</style>
+
+<div class="container my-4 os-page">
+  <div class="text-center mb-4">
+    <h2 class="mb-1">Ordem de Serviço</h2>
+    <p class="text-muted mb-0">{{ date }}</p>
+  </div>
+
+  <div class="card os-main-card">
+    <div class="os-topbar">
+      <span class="os-number-badge">
+        OS Nº {{ os.numero_os if os.numero_os else 'N/A' }}
+      </span>
+      <div class="os-city">
+        {{ os.city if os.city else 'Cidade não informada' }}
+      </div>
+    </div>
+
+    <div class="os-card-body" id="os-card-{{ os_id }}">
+      <div class="os-time-box">
+        <div>
+          Início {{ os.start_datetime | datetimeformathour('%H:%M') }} horas
+        </div>
+        <div>
+          Término {{ os.end_datetime | datetimeformathour('%H:%M') }} horas
+        </div>
+      </div>
+
+      <ul class="list-group list-group-flush">
+        <li
+          class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2"
+        >
+          <span>
+            Nome:
+            <span id="nome-os-{{ os_id }}"
+              >{{ os.name if os.name else 'Não informado' }}</span
+            >
+          </span>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary"
+            data-toggle="modal"
+            data-target="#editarNomeModal"
+            data-os-id="{{ os_id }}"
+            data-city="{{ os.city }}"
+            data-name="{{ os.name|default('', true) }}"
+            onclick="abrirModalEditarNome(this)"
+          >
+            Editar Nome
+          </button>
+        </li>
+
+        <li
+          class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2"
+        >
+          <span>
+            CPF/CNPJ:
+            <span id="cpfcnpj-os-{{ os_id }}"
+              >{{ os.cpfcnpj if os.cpfcnpj else 'Não informado' }}</span
+            >
+          </span>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary"
+            data-toggle="modal"
+            data-target="#editarCpfCnpjModal"
+            data-os-id="{{ os_id }}"
+            data-city="{{ os.city }}"
+            data-cpfcnpj="{{ os.cpfcnpj|default('', true) }}"
+            onclick="abrirModalEditarCpfCnpj(this)"
+          >
+            Editar CPF/CNPJ
+          </button>
+        </li>
+
+        <li class="list-group-item">
+          Telefone: {{ os.phone if os.phone else 'Não informado' }}
+        </li>
+        <li class="list-group-item">
+          Serviço: {{ os.service if os.service else 'Não informado' }}
+        </li>
+      </ul>
+
+      <div class="os-address-box my-4">
+        <label class="fw-bold mb-2">Endereço</label>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">
+            Bairro/Setor: {{ os.address.bairro if os.address and
+            os.address.bairro else 'Não informado' }}
+          </li>
+          <li class="list-group-item">
+            Rua: {{ os.address.rua if os.address and os.address.rua else 'Não
+            informado' }}
+          </li>
+          <li class="list-group-item">
+            Nº: {{ os.address.numero if os.address and os.address.numero else
+            'Não informado' }}
+          </li>
+          <li class="list-group-item">
+            Complemento: {{ os.address.complemento if os.address and
+            os.address.complemento else 'Não informado' }}
+          </li>
+          <li class="list-group-item">
+            Localização: {% if os.address and os.address.localizacao %}
+            <a href="{{ os.address.localizacao }}" target="_blank"
+              >{{ os.address.localizacao }}</a
+            >
+            {% else %} Não informada {% endif %}
+          </li>
+        </ul>
+      </div>
+
+      <div
+        class="d-flex justify-content-between align-items-center flex-wrap gap-3"
+      >
+        <div>
+          <div class="text-muted small">Valor da OS</div>
+          <div class="os-price">
+            R$
+            <span id="valor-os-{{ os_id }}"
+              >{{ os.newprice if os.newprice else '0,00' }}</span
+            >
+          </div>
+        </div>
+
+        <div>
+          <button
+            class="btn btn-sm btn-outline-primary"
+            data-toggle="modal"
+            data-target="#editarValorModal"
+            onclick="abrirModalEditarValor('{{ os_id }}', '{{ os.city }}', '{{ os.newprice }}')"
+          >
+            Editar Valor
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <div class="row g-2 os-actions">
+        <div class="col-md-4">
+          {% if os.status_paymment == "recebido" or os.status_paymment ==
+          "pendente" %}
+          <span class="badge text-bg-secondary fs-6 w-100 py-2">
+            Status {{ os.status_paymment }}
+          </span>
+          {% else %}
+          <button
+            type="button"
+            class="btn btn-danger"
+            data-toggle="modal"
+            data-target="#deletaOsModal"
+            data-city="{{ os.city }}"
+            data-idrecord="{{ os_id }}"
+          >
+            Cancelar OS
+          </button>
+          {% endif %}
+        </div>
+
+        <div class="col-md-4">
+          {% if os.status_paymment == "recebido" or os.status_paymment ==
+          "pendente" %} {% else %}
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-toggle="modal"
+            data-target="#osModal"
+            data-city="{{ os.city }}"
+            data-idrecord="{{ os_id }}"
+          >
+            Reagendar
+          </button>
+          {% endif %}
+        </div>
+
+        <div class="col-md-4">
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick="copyCardContent('{{ os_id }}')"
+          >
+            Copiar Informações
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Reagendar -->
+<div
+  class="modal fade"
+  id="osModal"
+  tabindex="-1"
+  role="dialog"
+  aria-labelledby="osModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="osModalLabel">Reagendar Serviço</h5>
+        <button
+          type="button"
+          class="close"
+          data-dismiss="modal"
+          aria-label="Close"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="osForm" method="post" action="/reagendar_os">
+          <input
+            type="date"
+            value="{{ os.start_datetime[:10] if os.start_datetime else '' }}"
+            id="osOldDate"
+            name="osOldDate"
+            hidden
+          />
+          <input id="osIdRecord" name="idRecord" hidden />
+          <input
+            type="text"
+            class="form-control"
+            id="osCity"
+            name="city"
+            hidden
+          />
+
+          <div class="form-group">
+            <label for="osDate">Data</label>
+            <input
+              type="date"
+              class="form-control"
+              id="osDate"
+              name="dateos"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="osStartTime">Hora de Início</label>
+            <input
+              type="time"
+              class="form-control"
+              id="osStartTime"
+              name="start_time"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="osEndTime">Hora de Término</label>
+            <input
+              type="time"
+              class="form-control"
+              id="osEndTime"
+              name="end_time"
+              required
+            />
+          </div>
+
+          <div class="my-4">
+            <select
+              class="form-select form-control"
+              id="osTechnician"
+              name="tecnico"
+            >
+              <option selected>Selecionar Técnico</option>
+              {% for tecnico_id, tecnico in tecnicos.items() %}
+              <option value="{{ tecnico_id }}">{{ tecnico.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <input
+            type="text"
+            value="{{ os.start_datetime[:10] if os.start_datetime else '' }}"
+            name="date"
+            hidden
+          />
+
+          <div align="center">
+            <button
+              type="submit"
+              id="confirmaros"
+              class="btn btn-primary"
+              style="width: 80%"
+            >
+              Confirmar OS
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cancelar -->
+<div
+  class="modal fade"
+  id="deletaOsModal"
+  tabindex="-1"
+  role="dialog"
+  aria-labelledby="deletaOsModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cancelar Serviço</h5>
+        <button
+          type="button"
+          class="close"
+          data-dismiss="modal"
+          aria-label="Close"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="/deletar_os">
+          <input id="deletaOsIdRecord" name="idRecord" hidden />
+          <input
+            type="text"
+            class="form-control"
+            id="deletaOsCity"
+            name="city"
+            hidden
+          />
+
+          <div class="form-group">
+            <label for="deletaOsMotivo">Motivo</label>
+            <textarea
+              class="form-control"
+              id="deletaOsMotivo"
+              name="deleteOsMotivo"
+              required
+            ></textarea>
+          </div>
+
+          <input
+            type="text"
+            value="{{ os.start_datetime[:10] if os.start_datetime else '' }}"
+            name="deletaOsdate"
+            hidden
+          />
+
+          <div align="center">
+            <button type="submit" class="btn btn-danger" style="width: 80%">
+              Apagar OS
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Valor -->
+<div
+  class="modal fade"
+  id="editarValorModal"
+  tabindex="-1"
+  role="dialog"
+  aria-labelledby="editarValorModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Valor da OS</h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="editOsId" />
+        <input type="hidden" id="editOsCity" />
+        <input
+          type="text"
+          value="{{ os.start_datetime[:10] if os.start_datetime else '' }}"
+          id="editOsDate"
+          hidden
+        />
+
+        <div class="form-group">
+          <label>Novo Valor</label>
+          <input
+            type="tel"
+            class="form-control"
+            id="editOsValor"
+            placeholder="0,00"
+          />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick="salvarNovoValorOs()"
+        >
+          Salvar Valor
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Nome -->
+<div
+  class="modal fade"
+  id="editarNomeModal"
+  tabindex="-1"
+  role="dialog"
+  aria-labelledby="editarNomeModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar / Adicionar Nome</h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="editNomeOsId" />
+        <input type="hidden" id="editNomeOsCity" />
+        <input
+          type="text"
+          value="{{ os.start_datetime[:10] if os.start_datetime else '' }}"
+          id="editNomeOsDate"
+          hidden
+        />
+
+        <div class="form-group">
+          <label for="editOsNome">Nome</label>
+          <input
+            type="text"
+            class="form-control"
+            id="editOsNome"
+            placeholder="Digite o nome"
+            oninput="formatarNome(this)"
+          />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick="salvarNovoNomeOs()"
+        >
+          Salvar Nome
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar CPF/CNPJ -->
+<div
+  class="modal fade"
+  id="editarCpfCnpjModal"
+  tabindex="-1"
+  role="dialog"
+  aria-labelledby="editarCpfCnpjModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar / Adicionar CPF/CNPJ</h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="editCpfCnpjOsId" />
+        <input type="hidden" id="editCpfCnpjOsCity" />
+        <input
+          type="text"
+          value="{{ os.start_datetime[:10] if os.start_datetime else '' }}"
+          id="editCpfCnpjOsDate"
+          hidden
+        />
+
+        <div class="form-group">
+          <label for="editOsCpfCnpj">CPF/CNPJ</label>
+          <input
+            type="text"
+            class="form-control"
+            id="editOsCpfCnpj"
+            oninput="formatarCpfCnpj(this)"
+            placeholder="Digite o CPF ou CNPJ"
+          />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick="salvarNovoCpfCnpjOs()"
+        >
+          Salvar CPF/CNPJ
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="popup" id="popup" align="center">
+  <div class="spinner-border" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+  <div class="mt-2">
+    <span>Salvando...</span>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="../static/js/formatarValor.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+
+<script>
+  function mostrarPopup() {
+    var overlay = document.getElementById("overlay");
+    var popup = document.getElementById("popup");
+
+    overlay.style.display = "block";
+    popup.style.display = "block";
+
+    overlay.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  }
+
+  function esconderPopup() {
+    document.getElementById("overlay").style.display = "none";
+    document.getElementById("popup").style.display = "none";
+  }
+</script>
+
+<script>
+  function copyCardContent(os_id) {
+    var card = document.getElementById("os-card-" + os_id);
+
+    if (card) {
+      var cardText = card.innerText;
+
+      navigator.clipboard
+        .writeText(cardText)
+        .then(function () {
+          alert("Informações copiadas com sucesso!");
+        })
+        .catch(function (error) {
+          console.error("Erro ao copiar as informações: ", error);
+        });
+    } else {
+      alert("Card não encontrado!");
+    }
+  }
+</script>
+
+<script>
+  $("#deletaOsModal").on("show.bs.modal", function (event) {
+    var button = $(event.relatedTarget);
+    var city = button.data("city");
+    var idRecord = button.data("idrecord");
+
+    var modal = $(this);
+    modal.find("#deletaOsCity").val(city);
+    modal.find("#deletaOsIdRecord").val(idRecord);
+  });
+
+  $("#osModal").on("show.bs.modal", function (event) {
+    var button = $(event.relatedTarget);
+    var city = button.data("city");
+    var idRecord = button.data("idrecord");
+
+    var modal = $(this);
+    modal.find("#osCity").val(city);
+    modal.find("#osIdRecord").val(idRecord);
+  });
+</script>
+
+<script>
+  function handleSwitchChange(
+    date1,
+    startTime1,
+    endTime1,
+    technician1,
+    city1,
+    oldDate1,
+  ) {
+    const data = {
+      date: date1,
+      startTime: startTime1,
+      endTime: endTime1,
+      technician: technician1,
+      city: city1,
+      oldDate: oldDate1,
+    };
+
+    fetch("/verifica_agenda", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+      .then((response) => {
+        if (response.ok) {
+          document.getElementById("confirmaros").disabled = false;
+          return response.json();
+        } else {
+          return response.json().then((errorData) => {
+            throw new Error(errorData.message);
+          });
+        }
+      })
+      .catch((error) => {
+        document.getElementById("confirmaros").disabled = true;
+        alert(error.message);
+      });
+  }
+
+  function onFieldsChange() {
+    const oldDate = document.getElementById("osOldDate").value;
+    const date = document.getElementById("osDate").value;
+    const startTime = document.getElementById("osStartTime").value;
+    const endTime = document.getElementById("osEndTime").value;
+    const technician = document.getElementById("osTechnician").value;
+    const city = document.getElementById("osCity").value;
+
+    handleSwitchChange(date, startTime, endTime, technician, city, oldDate);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const technician = document.getElementById("osTechnician");
+    const osDate = document.getElementById("osDate");
+    const osStartTime = document.getElementById("osStartTime");
+    const osEndTime = document.getElementById("osEndTime");
+
+    if (technician) technician.addEventListener("change", onFieldsChange);
+    if (osDate) osDate.addEventListener("change", onFieldsChange);
+    if (osStartTime) osStartTime.addEventListener("change", onFieldsChange);
+    if (osEndTime) osEndTime.addEventListener("change", onFieldsChange);
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", (event) => {
+    // Usando Luxon para lidar com o fuso horário
+    const DateTime = luxon.DateTime;
+
+    // Obtenha a data atual no fuso horário de São Paulo
+    const nowInSaoPaulo = DateTime.now().setZone("America/Sao_Paulo");
+
+    // Formate a data para 'YYYY-MM-DD'
+    const formattedDate = nowInSaoPaulo.toFormat("yyyy-MM-dd");
+
+    // Obtenha o elemento de entrada da data
+    const dateInput = document.getElementById("osDate");
+
+    // Defina o valor do campo de data para a data atual em São Paulo
+    dateInput.value = formattedDate;
+  });
+</script>
+<script src="{{ url_for('static', filename='js/formatarValor.js') }}"></script>
+<script>
+  function abrirModalEditarValor(osId, city, valorAtual) {
+    document.getElementById("editOsId").value = osId;
+    document.getElementById("editOsCity").value = city;
+
+    const inputValor = document.getElementById("editOsValor");
+
+    // Remove tudo que não é número
+    inputValor.value = String(valorAtual).replace(/\D/g, "");
+
+    // 🔥 Dispara o input para aplicar a máscara existente
+    inputValor.dispatchEvent(new Event("input"));
+  }
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    configurarFormatacaoValor("editOsValor");
+  });
+</script>
+
+<script>
+  function salvarNovoValorOs() {
+    const osId = document.getElementById("editOsId").value;
+    const city = document.getElementById("editOsCity").value;
+    const valor = document.getElementById("editOsValor").value;
+    const date = document.getElementById("editOsDate").value;
+
+    if (!valor) {
+      alert("Informe um valor válido.");
+      return;
+    }
+
+    mostrarPopup();
+    fetch("/atualizar_valor_os", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        os_id: osId,
+        city: city,
+        newprice: valor,
+        date: date,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          document.getElementById(`valor-os-${osId}`).innerText = valor;
+          window.location.reload();
+          $("#editarValorModal").modal("hide");
+        } else {
+          alert(data.message || "Erro ao atualizar valor.");
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("Erro de comunicação com o servidor.");
+      });
+  }
+</script>
+
+<script>
+  function abrirModalEditarNome(button) {
+    const osId = button.getAttribute("data-os-id") || "";
+    const city = button.getAttribute("data-city") || "";
+    const nomeAtual = button.getAttribute("data-name") || "";
+
+    document.getElementById("editNomeOsId").value = osId;
+    document.getElementById("editNomeOsCity").value = city;
+    document.getElementById("editOsNome").value = nomeAtual;
+  }
+
+  function salvarNovoNomeOs() {
+    const osId = document.getElementById("editNomeOsId").value;
+    const city = document.getElementById("editNomeOsCity").value;
+    const name = document.getElementById("editOsNome").value.trim();
+    const date = document.getElementById("editNomeOsDate").value;
+
+    mostrarPopup();
+
+    fetch("/atualizar_nome_os", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        os_id: osId,
+        city: city,
+        name: name,
+        date: date,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        esconderPopup();
+
+        if (data.success) {
+          $("#editarNomeModal").modal("hide");
+          window.location.reload();
+        } else {
+          alert(data.message || "Erro ao atualizar nome.");
+        }
+      })
+      .catch((err) => {
+        esconderPopup();
+        console.error(err);
+        alert("Erro de comunicação com o servidor.");
+      });
+  }
+</script>
+
+<script>
+  function abrirModalEditarCpfCnpj(button) {
+    const osId = button.getAttribute("data-os-id") || "";
+    const city = button.getAttribute("data-city") || "";
+    const cpfcnpjAtual = button.getAttribute("data-cpfcnpj") || "";
+
+    document.getElementById("editCpfCnpjOsId").value = osId;
+    document.getElementById("editCpfCnpjOsCity").value = city;
+    document.getElementById("editOsCpfCnpj").value = cpfcnpjAtual;
+  }
+
+  function salvarNovoCpfCnpjOs() {
+    const osId = document.getElementById("editCpfCnpjOsId").value;
+    const city = document.getElementById("editCpfCnpjOsCity").value;
+    const cpfcnpj = document.getElementById("editOsCpfCnpj").value.trim();
+    const date = document.getElementById("editCpfCnpjOsDate").value;
+
+    mostrarPopup();
+
+    fetch("/atualizar_cpfcnpj_os", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        os_id: osId,
+        city: city,
+        cpfcnpj: cpfcnpj,
+        date: date,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        esconderPopup();
+
+        if (data.success) {
+          $("#editarCpfCnpjModal").modal("hide");
+          window.location.reload();
+        } else {
+          alert(data.message || "Erro ao atualizar CPF/CNPJ.");
+        }
+      })
+      .catch((err) => {
+        esconderPopup();
+        console.error(err);
+        alert("Erro de comunicação com o servidor.");
+      });
+  }
+</script>
+
+<script>
+  function formatarCpfCnpj(input) {
+    let valor = input.value.replace(/\D/g, "");
+
+    if (valor.length <= 11) {
+      valor = valor.replace(/^(\d{3})(\d)/, "$1.$2");
+      valor = valor.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
+      valor = valor.replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+    } else {
+      valor = valor.slice(0, 14);
+      valor = valor.replace(/^(\d{2})(\d)/, "$1.$2");
+      valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+      valor = valor.replace(/\.(\d{3})(\d)/, ".$1/$2");
+      valor = valor.replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+    }
+
+    input.value = valor;
+  }
+
+  function formatarNome(input) {
+    let valor = input.value.toLowerCase();
+    const excecoes = ["da", "de", "do", "dos", "das", "e"];
+
+    valor = valor
+      .split(" ")
+      .map((palavra, index) => {
+        if (!palavra) return "";
+        if (excecoes.includes(palavra) && index !== 0) return palavra;
+        return palavra.charAt(0).toUpperCase() + palavra.slice(1);
+      })
+      .join(" ");
+
+    input.value = valor;
+  }
+</script>
+
+{% endblock %}
