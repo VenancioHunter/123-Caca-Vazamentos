@@ -873,17 +873,14 @@ async function gerarPDF() {
                     signer_document: signatureData.signer_document || tecnicoCNPJ,
                 };
 
-                paginasAssinaturaAvancada.forEach((pagina) => {
-                    pdf.setPage(pagina);
-                    adicionarBlocoAssinaturaAvancadaProfissional(
-                        pdf,
-                        assinaturaPdfDados,
-                        8,
-                        233,
-                    );
-                });
+                // Mesmo carimbo do fluxo de pendentes: selos laterais + folha de assinatura
+                const arrayBuffer = await originalBlob.arrayBuffer();
+                const bytesCarimbados = await window.aplicarCarimboAssinatura(
+                    arrayBuffer,
+                    assinaturaPdfDados,
+                );
 
-                return pdf.output("blob");
+                return new Blob([bytesCarimbados], { type: "application/pdf" });
             };
 
             await window.relatorioSignatureComponent.processGeneratedPdf({
