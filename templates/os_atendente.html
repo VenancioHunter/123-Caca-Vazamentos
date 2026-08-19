@@ -122,6 +122,10 @@ block content %}
     <div class="os-card-body" id="os-card-{{ os_id }}">
       <div class="os-time-box">
         <div>
+          Data: {{ date.split('-')[2] }}/{{ date.split('-')[1] }} ({{ date |
+          dia_semana }})
+        </div>
+        <div>
           Início {{ os.start_datetime | datetimeformathour('%H:%M') }} horas
         </div>
         <div>
@@ -142,6 +146,7 @@ block content %}
           <button
             type="button"
             class="btn btn-sm btn-outline-primary"
+            data-no-copy
             data-toggle="modal"
             data-target="#editarNomeModal"
             data-os-id="{{ os_id }}"
@@ -165,6 +170,7 @@ block content %}
           <button
             type="button"
             class="btn btn-sm btn-outline-primary"
+            data-no-copy
             data-toggle="modal"
             data-target="#editarCpfCnpjModal"
             data-os-id="{{ os_id }}"
@@ -176,7 +182,7 @@ block content %}
           </button>
         </li>
 
-        <li class="list-group-item">
+        <li class="list-group-item" data-no-copy>
           Telefone: {{ os.phone if os.phone else 'Não informado' }}
         </li>
         <li class="list-group-item">
@@ -229,6 +235,7 @@ block content %}
         <div>
           <button
             class="btn btn-sm btn-outline-primary"
+            data-no-copy
             data-toggle="modal"
             data-target="#editarValorModal"
             onclick="abrirModalEditarValor('{{ os_id }}', '{{ os.city }}', '{{ os.newprice }}')"
@@ -669,20 +676,44 @@ block content %}
   function copyCardContent(os_id) {
     var card = document.getElementById("os-card-" + os_id);
 
-    if (card) {
-      var cardText = card.innerText;
-
-      navigator.clipboard
-        .writeText(cardText)
-        .then(function () {
-          alert("Informações copiadas com sucesso!");
-        })
-        .catch(function (error) {
-          console.error("Erro ao copiar as informações: ", error);
-        });
-    } else {
+    if (!card) {
       alert("Card não encontrado!");
+      return;
     }
+
+    // Clona o card e remove tudo que estiver marcado com data-no-copy
+    // (telefone e botões de edição). O clone é renderizado fora da tela
+    // para que o innerText mantenha as quebras de linha.
+    var clone = card.cloneNode(true);
+    clone.querySelectorAll("[data-no-copy]").forEach(function (el) {
+      el.remove();
+    });
+
+    clone.style.position = "fixed";
+    clone.style.left = "-99999px";
+    clone.style.top = "0";
+    document.body.appendChild(clone);
+
+    var cardText = clone.innerText
+      .split("\n")
+      .map(function (linha) {
+        return linha.trim();
+      })
+      .filter(function (linha) {
+        return linha !== "";
+      })
+      .join("\n");
+
+    document.body.removeChild(clone);
+
+    navigator.clipboard
+      .writeText(cardText)
+      .then(function () {
+        alert("Informações copiadas com sucesso!");
+      })
+      .catch(function (error) {
+        console.error("Erro ao copiar as informações: ", error);
+      });
   }
 </script>
 

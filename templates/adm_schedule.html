@@ -1,589 +1,539 @@
-<!-- templates/dashboard.html -->
 {% extends "layout.html" %} {% block title %}ADM Agenda{% endblock %} {% block
 content %}
-<script src="../static/js/formatarValor.js"></script>
 <div class="container">
-  <div class="row mb-3">
+  <div class="my-4" align="center">
+    <h1>Agenda por Técnico</h1>
+  </div>
+
+  <!-- Filtros -->
+  <div class="row g-2 mb-4 align-items-end">
     <div class="col-md-4">
-      <label for="date">Data:</label>
+      <label for="date" class="form-label">Data</label>
       <input type="date" id="date" class="form-control" />
     </div>
-    <div class="col-md-2 d-flex align-items-end">
-      <button id="fetch-data" class="btn btn-primary w-100">Buscar</button>
+    <div class="col-md-4">
+      <label for="filtro-tecnico" class="form-label">Técnico</label>
+      <select id="filtro-tecnico" class="form-select" onchange="render()">
+        <option value="">Todos os técnicos</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <button id="fetch-data" class="btn btn-primary w-100" onclick="buscar()">
+        Buscar
+      </button>
     </div>
   </div>
-  <div id="resumo-financeiro"></div>
+
+  <div id="resumo-financeiro" class="mb-4"></div>
+
   <div id="results">
-    <!-- Resultados serão inseridos aqui -->
+    <!-- Blocos por técnico serão inseridos aqui -->
   </div>
 </div>
 
-<!-- Modal -->
-<div
-  class="modal fade"
-  id="paymentModal"
-  tabindex="-1"
-  aria-labelledby="paymentModalLabel"
-  aria-hidden="true"
->
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="paymentModalLabel">
-          Detalhes do Agendamento
-        </h5>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="payment-method">Método de Pagamento</label>
-          <select
-            class="form-control"
-            id="payment-method"
-            onchange="togglePaymentOptions()"
-          >
-            <option value="">Selecione</option>
-            <option value="dinheiro">Dinheiro</option>
-            <option value="pix">PIX</option>
-            <option value="cartao">Cartão de Crédito</option>
-            <option value="boleto">Boleto</option>
-          </select>
-        </div>
-        <!-- Campos Dinâmicos -->
-        <div id="payment-options">
-          <!-- Dinheiro / PIX -->
-          <div id="input-amount" class="form-group mt-3 d-none">
-            <label for="amount">Valor</label>
-            <input
-              type="tel"
-              class="form-control"
-              id="amount"
-              placeholder="Insira o valor"
-            />
-            <div class="my-4">
-              <label style="font-size: small; font-weight: bold"
-                >Confirmação de Recebimento</label
-              >
-              <div>
-                <input
-                  type="radio"
-                  id="received"
-                  name="paymentStatus"
-                  value="received"
-                  required
-                />
-                <label for="received">Recebido</label>
-              </div>
-              <div>
-                <input
-                  type="radio"
-                  id="not-received"
-                  name="paymentStatus"
-                  value="notreceived"
-                />
-                <label for="not-received">Não Recebido</label>
-              </div>
-            </div>
-          </div>
-          <!-- Cartão de Crédito -->
-          <div id="credit-card-options" class="form-group mt-3 d-none">
-            <label for="card-valor">Valor</label>
-            <input
-              type="tel"
-              class="form-control"
-              id="card-valor"
-              placeholder="Insira o valor"
-            />
-            <label for="installments" class="mt-3">Parcelas</label>
-            <select class="form-control" id="installments">
-              <option value="1">1x</option>
-              <option value="2">2x</option>
-              <option value="3">3x</option>
-              <option value="4">4x</option>
-              <option value="5">5x</option>
-              <option value="6">6x</option>
-              <option value="7">7x</option>
-              <option value="8">8x</option>
-              <option value="9">9x</option>
-              <option value="10">10x</option>
-              <!-- Adicione mais opções de parcelas se necessário -->
-            </select>
-            <div class="my-4">
-              <label style="font-size: small; font-weight: bold"
-                >Confirmação de Recebimento</label
-              >
-
-              <div>
-                <input
-                  type="radio"
-                  id="received-cartao"
-                  name="paymentStatus"
-                  value="received"
-                  required
-                />
-                <label for="received-cartao">Recebido</label>
-              </div>
-              <div>
-                <input
-                  type="radio"
-                  id="not-received-cartao"
-                  name="paymentStatus"
-                  value="notreceived"
-                />
-                <label for="not-received-cartao">Não Recebido</label>
-              </div>
-            </div>
-          </div>
-          <!-- Boleto -->
-          <div id="boleto-options" class="form-group mt-3 d-none">
-            <label for="boleto-valor">Valor a Receber</label>
-            <input
-              type="tel"
-              class="form-control"
-              id="boleto-valor"
-              placeholder="Insira o valor"
-            />
-            <label for="boleto-date" class="mt-3">Data de Vencimento</label>
-            <input type="date" class="form-control" id="boleto-date" required />
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label for="modal-service" class="form-label">Serviço</label>
-          <input type="text" id="modal-service" class="form-control" readonly />
-        </div>
-        <div class="mb-3">
-          <label for="modal-phone" class="form-label">Telefone</label>
-          <input type="text" id="modal-phone" class="form-control" readonly />
-        </div>
-        <div class="mb-3">
-          <label for="modal-price" class="form-label">Valor</label>
-          <input type="text" id="modal-price" class="form-control" readonly />
-        </div>
-        <div class="mb-3">
-          <label for="observacao-service" class="form-label">Observação</label>
-          <textarea
-            id="observacao-service"
-            class="form-control"
-            rows="3"
-          ></textarea>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Fechar
-        </button>
-        <button
-          type="button"
-          class="btn btn-primary"
-          onclick="savePayment(this)"
-        >
-          Salvar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Overlay para bloquear a tela de fundo -->
+<!-- Overlay + Pop-up de carregamento -->
 <div class="overlay" id="overlay"></div>
-
-<!-- Pop-up -->
 <div class="popup" id="popup" align="center">
   <div class="spinner-border" role="status">
     <span class="visually-hidden">Loading...</span>
   </div>
-  <div>
-    <span>Aguarde...</span>
-  </div>
+  <div><span>Aguarde...</span></div>
 </div>
-
-<script>
-  function mostrarPopup() {
-    var overlay = document.getElementById("overlay");
-    var popup = document.getElementById("popup");
-
-    overlay.style.display = "block";
-    popup.style.display = "block";
-
-    // Bloqueia a interação com a tela de fundo
-    overlay.addEventListener("click", function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    });
-  }
-
-  function fecharPopup() {
-    var overlay = document.getElementById("overlay");
-    var popup = document.getElementById("popup");
-
-    overlay.style.display = "none";
-    popup.style.display = "none";
-  }
-</script>
 
 <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
 <script>
-  document.addEventListener("DOMContentLoaded", (event) => {
-    // Usando Luxon para lidar com o fuso horário
-    const DateTime = luxon.DateTime;
+  // ---- Estado ----
+  let dadosAgenda = {}; // { nomeTecnico: [os, ...] }
+  let dataSelecionada = "";
 
-    // Obtenha a data atual no fuso horário de São Paulo
-    const nowInSaoPaulo = DateTime.now().setZone("America/Sao_Paulo");
+  const DIAS_SEMANA = [
+    "Domingo",
+    "Segunda-feira",
+    "Terça-feira",
+    "Quarta-feira",
+    "Quinta-feira",
+    "Sexta-feira",
+    "Sábado",
+  ];
 
-    // Formate a data para 'YYYY-MM-DD'
-    const formattedDate = nowInSaoPaulo.toFormat("yyyy-MM-dd");
+  // ---- Utilitários ----
+  function escapeHtml(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[c];
+    });
+  }
 
-    // Obtenha o elemento de entrada da data
-    const dateInput = document.getElementById("date");
+  function formatarData(dstr) {
+    // "2026-07-21" -> "21/07 (Terça-feira)"
+    if (!dstr) return "";
+    const partes = String(dstr).split("-");
+    if (partes.length < 3) return dstr;
+    const ano = Number(partes[0]);
+    const mes = Number(partes[1]);
+    const dia = Number(partes[2]);
+    const dt = new Date(ano, mes - 1, dia); // data local (sem fuso UTC)
+    const dd = String(dia).padStart(2, "0");
+    const mm = String(mes).padStart(2, "0");
+    return `${dd}/${mm} (${DIAS_SEMANA[dt.getDay()]})`;
+  }
 
-    // Defina o valor do campo de data para a data atual em São Paulo
-    dateInput.value = formattedDate;
-  });
-</script>
-<script>
-  document.getElementById("fetch-data").addEventListener("click", () => {
-    reloadTechnicianSchedules();
-  });
+  function formatarHora(datetimeStr) {
+    // "2026-07-21 11:00" -> "11:00"
+    if (!datetimeStr) return "--:--";
+    const partes = String(datetimeStr).split(" ");
+    return partes[1] || "--:--";
+  }
 
-  function reloadTechnicianSchedules() {
-    let totalGeral = 0;
-    let totalRecebido = 0;
-    let totalPendente = 0;
-    let totalAguardando = 0;
+  // ---- Montagem dos cards (mesmas informações de view_schedule_atendente) ----
+  function cardOS(os) {
+    const ender = os.address || {};
+    const loc = ender.localizacao
+      ? `<a href="${escapeHtml(ender.localizacao)}" target="_blank" rel="noopener">${escapeHtml(
+          ender.localizacao,
+        )}</a>`
+      : "Não informada";
 
-    function parseToNumber(value) {
-      if (typeof value === "string") {
-        return (
-          parseFloat(value.replace("R$", "").replace(",", ".").trim()) || 0
-        );
-      }
-      return Number(value) || 0;
-    }
-    const date = document.getElementById("date").value;
+    return `
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">${escapeHtml(os.city || "")}</h5>
+          <div class="my-2" style="font-weight: bold; text-align: right">
+            <div>Data: ${formatarData(os.data)}</div>
+            <div>Início ${formatarHora(os.start_datetime)} horas</div>
+            <div>Término ${formatarHora(os.end_datetime)} horas</div>
+          </div>
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item">Nome: ${escapeHtml(os.name || "Não informado")}</li>
+            <li class="list-group-item">Telefone: ${escapeHtml(os.phone || "Não informado")}</li>
+            <li class="list-group-item">Serviço: ${escapeHtml(os.service || "Não informado")}</li>
+          </ul>
+          <div class="p-3 my-3" style="background-color: rgb(219, 219, 219)">
+            <label class="fw-bold">Endereço</label>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item">Bairro/Setor: ${escapeHtml(ender.bairro || "Não informado")}</li>
+              <li class="list-group-item">Rua: ${escapeHtml(ender.rua || "Não informado")}</li>
+              <li class="list-group-item">Nº: ${escapeHtml(ender.numero || "Não informado")}</li>
+              <li class="list-group-item">Complemento: ${escapeHtml(ender.complemento || "Não informado")}</li>
+              <li class="list-group-item">Localização: ${loc}</li>
+            </ul>
+          </div>
+          <div style="text-align: right">
+            <h5>Valor R$ <span>${escapeHtml(os.newprice || "0,00")}</span></h5>
+          </div>
+        </div>
+      </div>`;
+  }
 
-    if (!date) {
-      alert("Erro: Data não encontrada para recarregar os agendamentos.");
+  function blocoTecnico(nome, lista) {
+    const cards = lista.map(cardOS).join("");
+    return `
+      <div class="mb-5">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
+          <h4 class="mb-0" style="color: #0d5590">
+            ${escapeHtml(nome)}
+            <span class="badge bg-secondary align-middle">${lista.length} OS</span>
+          </h4>
+          <button
+            class="btn btn-outline-primary btn-sm"
+            data-print-tecnico="${escapeHtml(nome)}"
+          >
+            🖨️ Imprimir OSs
+          </button>
+        </div>
+        ${cards}
+      </div>`;
+  }
+
+  // ---- Render ----
+  function render() {
+    const filtro = document.getElementById("filtro-tecnico").value;
+    const container = document.getElementById("results");
+    const nomes = Object.keys(dadosAgenda);
+    const alvo = filtro ? nomes.filter((n) => n === filtro) : nomes;
+
+    if (!alvo.length) {
+      document.getElementById("resumo-financeiro").innerHTML = "";
+      container.innerHTML =
+        '<p class="text-muted text-center">Nenhum agendamento encontrado.</p>';
       return;
     }
+
+    renderResumo(alvo);
+
+    container.innerHTML = alvo
+      .sort()
+      .map((n) => blocoTecnico(n, dadosAgenda[n]))
+      .join("");
+  }
+
+  // Resumo financeiro dos técnicos exibidos (reflete o filtro atual)
+  function renderResumo(nomes) {
+    let geral = 0,
+      recebido = 0,
+      pendente = 0,
+      aguardando = 0;
+
+    nomes.forEach((n) => {
+      (dadosAgenda[n] || []).forEach((os) => {
+        const v = parseValor(os.newprice);
+        geral += v;
+        const st = String(os.status_paymment || "").toLowerCase();
+        if (st === "recebido") recebido += v;
+        else if (st === "pendente") pendente += v;
+        else aguardando += v;
+      });
+    });
+
+    document.getElementById("resumo-financeiro").innerHTML = `
+      <div class="card p-3">
+        <h5 class="mb-3">Resumo Financeiro</h5>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Total Geral</span><strong>${moedaBRL(geral)}</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Recebido</span><strong class="text-success">${moedaBRL(recebido)}</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Pendente</span><strong class="text-primary">${moedaBRL(pendente)}</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Aguardando</span><strong class="text-warning">${moedaBRL(aguardando)}</strong>
+          </li>
+        </ul>
+      </div>`;
+  }
+
+  function popularTecnicos() {
+    const sel = document.getElementById("filtro-tecnico");
+    const anterior = sel.value;
+    const nomes = Object.keys(dadosAgenda).sort();
+    sel.innerHTML =
+      '<option value="">Todos os técnicos</option>' +
+      nomes
+        .map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`)
+        .join("");
+    // Mantém a seleção anterior se o técnico ainda existir
+    if (anterior && nomes.includes(anterior)) {
+      sel.value = anterior;
+    }
+  }
+
+  // ---- Busca ----
+  function buscar() {
+    const date = document.getElementById("date").value;
+    if (!date) {
+      alert("Selecione uma data.");
+      return;
+    }
+    dataSelecionada = date;
     mostrarPopup();
 
     fetch(`/get_technician_schedules?date=${date}`)
       .then((response) => {
-        if (!response.ok) {
-          throw new Error("Erro ao recarregar os agendamentos.");
-        }
+        if (!response.ok) throw new Error("Erro ao buscar os agendamentos.");
         return response.json();
       })
       .then((data) => {
-        const resultsDiv = document.getElementById("results");
-        resultsDiv.innerHTML = ""; // Limpa os resultados anteriores
-
-        if (Object.keys(data).length === 0) {
-          resultsDiv.innerHTML = "<p>Nenhum agendamento encontrado.</p>";
-          return;
-        }
-
-        for (const [technician, schedules] of Object.entries(data)) {
-          const technicianDiv = document.createElement("div");
-          technicianDiv.classList.add("card", "mb-3");
-
-          const cardBody = `
-          <div class="card-body">
-            <h5>${technician}</h5>
-            <ul class="list-group">
-              ${schedules
-                .map((schedule) => {
-                  const status = (
-                    schedule.status_paymment || "aguardando"
-                  ).toLowerCase();
-                  const valor = parseToNumber(schedule.newprice);
-                  totalGeral += valor;
-
-                  if (status === "recebido") {
-                    totalRecebido += valor;
-                  } else if (status === "pendente") {
-                    totalPendente += valor;
-                  } else {
-                    totalAguardando += valor;
-                  }
-                  const hasPaymentStatus = !!schedule.status_paymment;
-                  return `
-                    <li class="schedule-item list-group-item list-group-item-action ${
-                      hasPaymentStatus ? "disabled" : ""
-                    }" 
-                        data-name="${schedule.name}" 
-                        data-service="${schedule.service}" 
-                        data-phone="${schedule.phone}" 
-                        data-price="${schedule.newprice}" 
-                        onclick="setOsId('${schedule.os_id}', '${
-                    schedule.city
-                  }', '${schedule.data}', '${schedule.newprice}', '${
-                    schedule.service
-                  }', '${schedule.tecnico_id}')"
-                        style="cursor: ${
-                          hasPaymentStatus ? "not-allowed" : "pointer"
-                        }"
-                        ${
-                          hasPaymentStatus
-                            ? ""
-                            : 'data-toggle="modal" data-target="#paymentModal"'
-                        }
-                    >
-                    Cidade: ${schedule.city},
-                      Nome: ${schedule.name}, Serviço: ${
-                    schedule.service
-                  }, Telefone: ${schedule.phone}, Valor: ${schedule.newprice}
-                  <span class="badge ${
-                    schedule.status_paymment?.toLowerCase() === "recebido"
-                      ? "bg-success"
-                      : schedule.status_paymment?.toLowerCase() === "pendente"
-                      ? "bg-primary"
-                      : "bg-warning"
-                  }" style="text-transform: capitalize;">
-                  ${schedule.status_paymment || "Aguardando"}
-                  </span>
-
-                    </li>`;
-                })
-                .join("")}
-            </ul>
-          </div>
-        `;
-          const resumoHTML = `
-        <div class="card p-3 mb-4">
-          <h5>Resumo Financeiro</h5>
-          <ul class="list-group">
-            <li class="list-group-item d-flex justify-content-between">
-              <span>Total Geral</span>
-              <strong>R$ ${totalGeral.toFixed(2).replace(".", ",")}</strong>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-              <span>Recebido</span>
-              <strong class="text-success">R$ ${totalRecebido
-                .toFixed(2)
-                .replace(".", ",")}</strong>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-              <span>Pendente</span>
-              <strong class="text-primary">R$ ${totalPendente
-                .toFixed(2)
-                .replace(".", ",")}</strong>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-              <span>Aguardando</span>
-              <strong class="text-warning">R$ ${totalAguardando
-                .toFixed(2)
-                .replace(".", ",")}</strong>
-            </li>
-          </ul>
-        </div>
-      `;
-          document.getElementById("resumo-financeiro").innerHTML = resumoHTML;
-
-          technicianDiv.innerHTML = cardBody;
-          resultsDiv.appendChild(technicianDiv);
-          fecharPopup();
-        }
+        dadosAgenda = data && !data.error ? data : {};
+        popularTecnicos();
+        render();
+        fecharPopup();
       })
       .catch((error) => {
-        console.error("Erro ao recarregar os agendamentos:", error);
-        alert("Erro ao recarregar os agendamentos.");
+        fecharPopup();
+        console.error("Erro ao buscar os agendamentos:", error);
+        alert("Erro ao buscar os agendamentos.");
       });
   }
-</script>
-<script>
-  function togglePaymentOptions() {
-    var method = document.getElementById("payment-method").value;
 
-    // Esconde todas as opções
-    document.getElementById("input-amount").classList.add("d-none");
-    document.getElementById("credit-card-options").classList.add("d-none");
-    document.getElementById("boleto-options").classList.add("d-none");
+  // ---- Helpers de impressão ----
+  const MESES = [
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+  ];
 
-    // Mostra o campo de acordo com a seleção
-    if (method === "dinheiro" || method === "pix") {
-      document.getElementById("input-amount").classList.remove("d-none");
-    } else if (method === "cartao") {
-      document.getElementById("credit-card-options").classList.remove("d-none");
-    } else if (method === "boleto") {
-      document.getElementById("boleto-options").classList.remove("d-none");
-    }
+  function parseValor(v) {
+    if (v == null) return 0;
+    let s = String(v).trim();
+    if (s.indexOf(",") > -1) s = s.replace(/\./g, "").replace(",", ".");
+    return parseFloat(s) || 0;
   }
-</script>
 
-<script>
-  function getSelectedPaymentStatus() {
-    var selectedOption = document.querySelector(
-      'input[name="paymentStatus"]:checked'
+  function moedaBRL(num) {
+    return (
+      "R$ " +
+      Number(num || 0).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
     );
-    if (selectedOption) {
-      return selectedOption.value;
-    } else {
-      return null; // Caso nenhuma opção esteja selecionada
-    }
   }
-  document.addEventListener("click", (event) => {
-    const listItem = event.target.closest(".schedule-item");
 
-    if (listItem && !listItem.classList.contains("disabled")) {
-      // Obtenha os dados do `li` clicado
-      const name = listItem.getAttribute("data-name");
-      const service = listItem.getAttribute("data-service");
-      const phone = listItem.getAttribute("data-phone");
-      const price = listItem.getAttribute("data-price");
+  function dataExtenso(dstr) {
+    const p = String(dstr || "").split("-").map(Number);
+    if (p.length < 3) return dstr || "";
+    return `${p[2]} de ${MESES[p[1] - 1]} de ${p[0]}`;
+  }
 
-      // Atualize o modal com as informações
-      document.getElementById(
-        "paymentModalLabel"
-      ).textContent = `Detalhes do Agendamento - ${name}`;
-      document.getElementById("modal-service").value = service;
-      document.getElementById("modal-phone").value = phone;
-      document.getElementById("modal-price").value = price;
+  function diaSemanaDe(dstr) {
+    const p = String(dstr || "").split("-").map(Number);
+    if (p.length < 3) return "";
+    return DIAS_SEMANA[new Date(p[0], p[1] - 1, p[2]).getDay()];
+  }
 
-      // Exiba o modal
-      const paymentModal = new bootstrap.Modal(
-        document.getElementById("paymentModal")
-      );
-      paymentModal.show();
+  function horaDe(dt) {
+    return String(dt || "").split(" ")[1] || "--:--";
+  }
+
+  function enderecoLinha(e) {
+    e = e || {};
+    const rua = (e.rua || "").trim();
+    const num = (e.numero || "").trim();
+    if (!rua && !num) return "Não informado";
+    if (rua && num) return `${rua}, Nº ${num}`;
+    return rua || `Nº ${num}`;
+  }
+
+  // ---- Impressão por técnico (modelo profissional "Agenda do Dia") ----
+  function imprimirTecnico(nome) {
+    const lista = dadosAgenda[nome] || [];
+    if (!lista.length) return;
+
+    // Agregados do cabeçalho
+    const qtd = lista.length;
+    const totalValor = lista.reduce((s, o) => s + parseValor(o.newprice), 0);
+    const inicios = lista.map((o) => horaDe(o.start_datetime)).filter((h) => h !== "--:--").sort();
+    const fins = lista.map((o) => horaDe(o.end_datetime)).filter((h) => h !== "--:--").sort();
+    const periodo = `${inicios[0] || "--:--"} – ${fins[fins.length - 1] || "--:--"}`;
+    const cidades = [...new Set(lista.map((o) => o.city).filter(Boolean))].join(" · ");
+    const qtdLabel =
+      String(qtd).padStart(2, "0") +
+      " " +
+      (qtd === 1 ? "ordem de serviço" : "ordens de serviço");
+    const logoUrl = `${window.location.origin}/static/img/logo.png`;
+
+    // Cards de OS
+    const cards = lista
+      .map((os, i) => {
+        const e = os.address || {};
+        return `
+        <article class="os">
+          <div class="os-side">
+            <span class="os-tag">OS</span>
+            <span class="os-num">${String(i + 1).padStart(2, "0")}</span>
+          </div>
+          <div class="os-body">
+            <div class="os-top">
+              <div class="os-top-left">
+                <h2 class="os-city">${escapeHtml(os.city || "")}</h2>
+                ${os.service ? `<span class="badge">${escapeHtml(os.service)}</span>` : ""}
+              </div>
+              <div class="os-top-boxes">
+                <div class="mini">
+                  <div class="mini-label">HORÁRIO</div>
+                  <div class="mini-val">${horaDe(os.start_datetime)} – ${horaDe(os.end_datetime)}</div>
+                </div>
+                <div class="mini mini-hl">
+                  <div class="mini-label">VALOR</div>
+                  <div class="mini-val">${moedaBRL(parseValor(os.newprice))}</div>
+                </div>
+              </div>
+            </div>
+            <div class="grid">
+              <div class="field"><div class="f-label">CLIENTE</div><div class="f-val">${escapeHtml(os.name || "Não informado")}</div></div>
+              <div class="field"><div class="f-label">TELEFONE</div><div class="f-val">${escapeHtml(os.phone || "Não informado")}</div></div>
+              <div class="field"><div class="f-label">BAIRRO / SETOR</div><div class="f-val">${escapeHtml(e.bairro || "Não informado")}</div></div>
+              <div class="field"><div class="f-label">COMPLEMENTO</div><div class="f-val">${escapeHtml(e.complemento || "Não informado")}</div></div>
+              <div class="field field-full"><div class="f-label">ENDEREÇO</div><div class="f-val">${escapeHtml(enderecoLinha(e))}</div></div>
+            </div>
+            <div class="obs">
+              <div class="f-label">OBSERVAÇÕES</div>
+              <div class="obs-area"></div>
+            </div>
+          </div>
+        </article>`;
+      })
+      .join("");
+
+    const css = `
+      *{box-sizing:border-box;margin:0;padding:0;}
+      :root{--navy:#1c2b57;--deep:#16244d;--muted:#97a0b3;--ink:#2c3444;--line:#e6e9f1;--soft:#f2f4f9;--badge:#eaeef6;}
+      html,body{font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:var(--ink);font-size:12.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      .doc{max-width:780px;margin:0 auto;padding:26px 30px;}
+      .kicker{font-size:9px;letter-spacing:2.5px;color:var(--muted);font-weight:600;text-transform:uppercase;}
+      .doc-head{display:flex;justify-content:space-between;align-items:center;}
+      .brand{display:flex;align-items:center;gap:12px;}
+      .brand .logo{width:44px;height:44px;object-fit:contain;}
+      .brand-name{font-family:'Poppins',sans-serif;font-weight:700;font-size:17px;color:var(--navy);letter-spacing:.5px;}
+      .brand-sub{font-size:8.5px;letter-spacing:2px;color:var(--muted);font-weight:600;margin-top:2px;}
+      .head-right{text-align:right;}
+      .head-date{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:var(--navy);margin-top:3px;}
+      .rule{height:2px;background:var(--navy);margin:14px 0 18px;border-radius:2px;}
+      .tech{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;}
+      .tech-name{font-family:'Poppins',sans-serif;font-size:32px;color:var(--navy);font-weight:700;line-height:1;margin-top:5px;}
+      .tech-right{text-align:right;}
+      .weekday{color:var(--muted);font-size:12px;}
+      .tech-count{font-weight:700;color:var(--navy);font-size:13px;margin-top:2px;}
+      .stats{display:flex;gap:12px;margin-bottom:22px;}
+      .stat{flex:1;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+      .stat-label{font-size:8.5px;letter-spacing:1.8px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px;}
+      .stat-val{font-family:'Poppins',sans-serif;font-weight:700;font-size:18px;color:var(--navy);}
+      .stat-val.small{font-size:12.5px;}
+      .stat-hl{background:var(--deep);border-color:var(--deep);}
+      .stat-hl .stat-label{color:#9fb0d6;}
+      .stat-hl .stat-val{color:#fff;}
+      .section-title{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+      .section-title span{font-weight:700;color:var(--navy);font-size:13px;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;}
+      .section-title i{flex:1;height:1px;background:var(--line);}
+      .os{display:flex;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px;break-inside:avoid;page-break-inside:avoid;}
+      .os-side{width:66px;background:var(--deep);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+      .os-tag{font-size:9px;letter-spacing:2px;color:#9fb0d6;font-weight:600;}
+      .os-num{font-family:'Poppins',sans-serif;font-weight:700;font-size:26px;line-height:1;}
+      .os-body{flex:1;padding:16px 18px;}
+      .os-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;}
+      .os-city{font-family:'Poppins',sans-serif;font-size:20px;color:var(--navy);font-weight:700;line-height:1.1;}
+      .badge{display:inline-block;margin-top:6px;background:var(--badge);color:var(--navy);font-size:10px;font-weight:600;padding:4px 11px;border-radius:999px;}
+      .os-top-boxes{display:flex;gap:10px;}
+      .mini{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:8px 14px;text-align:center;min-width:96px;}
+      .mini-label{font-size:8px;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:3px;}
+      .mini-val{font-family:'Poppins',sans-serif;font-weight:700;font-size:13px;color:var(--navy);white-space:nowrap;}
+      .mini-hl{background:#eef1f8;}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;}
+      .field-full{grid-column:1 / -1;}
+      .f-label{font-size:8.5px;letter-spacing:1.5px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:2px;}
+      .f-val{font-size:13px;color:var(--ink);}
+      .obs{margin-top:14px;}
+      .obs-area{border:1px solid var(--line);border-radius:10px;height:50px;margin-top:5px;}
+      .doc-foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:26px;padding-top:14px;border-top:1px solid var(--line);}
+      .foot-left{font-size:10px;color:var(--muted);line-height:1.6;}
+      .foot-right{display:flex;gap:28px;}
+      .sign{text-align:center;}
+      .sign-line{width:170px;border-top:1px solid #b9c0cf;margin-bottom:5px;}
+      .sign-label{font-size:9px;letter-spacing:1.5px;color:var(--muted);font-weight:600;}
+      @page{size:A4;margin:12mm;}
+      @media print{.doc{padding:0;max-width:none;}}
+    `;
+
+    const html = `<!doctype html>
+      <html lang="pt-br">
+        <head>
+          <meta charset="utf-8" />
+          <title>Agenda - ${escapeHtml(nome)} - ${dataExtenso(dataSelecionada)}</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
+          <style>${css}</style>
+        </head>
+        <body>
+          <div class="doc">
+            <header class="doc-head">
+              <div class="brand">
+                <img class="logo" src="${logoUrl}" alt="" onerror="this.style.display='none'" />
+                <div>
+                  <div class="brand-name">123 CAÇA VAZAMENTOS</div>
+                  <div class="brand-sub">DETECÇÃO E REPARO DE VAZAMENTOS</div>
+                </div>
+              </div>
+              <div class="head-right">
+                <div class="kicker">AGENDA DO DIA</div>
+                <div class="head-date">${dataExtenso(dataSelecionada)}</div>
+              </div>
+            </header>
+            <div class="rule"></div>
+
+            <section class="tech">
+              <div>
+                <div class="kicker">TÉCNICO RESPONSÁVEL</div>
+                <div class="tech-name">${escapeHtml(nome)}</div>
+              </div>
+              <div class="tech-right">
+                <div class="weekday">${diaSemanaDe(dataSelecionada)}</div>
+                <div class="tech-count">${qtdLabel}</div>
+              </div>
+            </section>
+
+            <section class="stats">
+              <div class="stat">
+                <div class="stat-label">Total de OS</div>
+                <div class="stat-val">${String(qtd).padStart(2, "0")}</div>
+              </div>
+              <div class="stat stat-hl">
+                <div class="stat-label">Valor previsto</div>
+                <div class="stat-val">${moedaBRL(totalValor)}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Período</div>
+                <div class="stat-val">${periodo}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Cidades</div>
+                <div class="stat-val small">${escapeHtml(cidades || "—")}</div>
+              </div>
+            </section>
+
+            <div class="section-title"><span>Ordens de Serviço</span><i></i></div>
+
+            ${cards}
+
+            <footer class="doc-foot">
+              <div class="foot-left">
+                Documento gerado automaticamente pelo sistema<br />
+                123 Caça Vazamentos · ${dataExtenso(dataSelecionada)}
+              </div>
+              <div class="foot-right">
+                <div class="sign"><div class="sign-line"></div><div class="sign-label">ASSINATURA DO TÉCNICO</div></div>
+                <div class="sign"><div class="sign-line"></div><div class="sign-label">CONFERÊNCIA</div></div>
+              </div>
+            </footer>
+          </div>
+          <script>
+            window.onload = function () {
+              var go = function () { setTimeout(function () { window.print(); }, 200); };
+              if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(go);
+              } else {
+                go();
+              }
+            };
+          <\/script>
+        </body>
+      </html>`;
+
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+  }
+
+  // Delegação do clique de imprimir (evita problemas de escape em nomes)
+  document.addEventListener("click", function (event) {
+    const botao = event.target.closest("[data-print-tecnico]");
+    if (botao) {
+      imprimirTecnico(botao.getAttribute("data-print-tecnico"));
     }
   });
 
-  function savePayment() {
-    const observacao = document.getElementById("observacao-service").value;
-    alert(`Pagamento salvo com a observação: ${observacao}`);
-    // Aqui você pode enviar as informações para o backend, se necessário
-  }
-</script>
-<script>
-  function setOsId(osId, city, osDate, valueService, typeService, tecnicoId) {
-    currentOsId = osId; // Armazena o ID do serviço atual
-    currentOsCity = city;
-    currentOsDate = osDate;
-    currentOsValueService = valueService;
-    currentOSTypeService = typeService;
-    currentOsIdTecnico = tecnicoId;
+  // ---- Overlay/Pop-up ----
+  function mostrarPopup() {
+    document.getElementById("overlay").style.display = "block";
+    document.getElementById("popup").style.display = "block";
   }
 
-  function savePayment(button) {
-    // Aqui você pode coletar os dados preenchidos no modal
-    var method = document.getElementById("payment-method").value;
-    var amount = document.getElementById("amount").value;
-    var cardValor = document.getElementById("card-valor").value;
-    var installments = document.getElementById("installments").value;
-    var boletoValor = document.getElementById("boleto-valor").value;
-    var boletoDate = document.getElementById("boleto-date").value;
-    var observacaoService = document.getElementById("observacao-service").value;
-    var status = getSelectedPaymentStatus();
-
-    if (!currentOsId) {
-      alert("Erro: ID do serviço não encontrado.");
-      return;
-    }
-
-    if (!amount && !cardValor && !boletoValor) {
-      alert("Erro: Preencha o valor recebido.");
-      return;
-    }
-
-    if (method == "boleto") {
-      status = "notreceived";
-    }
-
-    if (!status) {
-      alert("Erro: Confirme o RECEBIMENTO.");
-      return;
-    }
-    // Exemplo de coleta de dados
-    var paymentData = {
-      os_id: currentOsId,
-      os_id_tecnico: currentOsIdTecnico,
-      os_city: currentOsCity,
-      os_date: currentOsDate,
-      os_value_service: currentOsValueService,
-      os_type_serve: currentOSTypeService,
-      method: method,
-      amount: amount,
-      cardValor: cardValor,
-      installments: installments,
-      boletoValor: boletoValor,
-      boletoDate: boletoDate,
-      observacaoService: observacaoService,
-      statusPaymment: status,
-    };
-    console.log(paymentData);
-    mostrarPopup();
-
-    button.disabled = true;
-    // Aqui você pode enviar os dados para o servidor usando AJAX
-    // Exemplo com fetch API
-    fetch("/finalizar_os", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(paymentData),
-    })
-      .then((responseData) => {
-        clearModalFields();
-        // Fechar o modal após o envio bem-sucedido
-        const modalElement = document.getElementById("paymentModal");
-        const modalInstance = bootstrap.Modal.getInstance(modalElement);
-        if (modalInstance) {
-          modalInstance.hide();
-        }
-        button.disabled = false;
-        reloadTechnicianSchedules();
-      })
-      .catch((error) => {
-        console.error("Erro ao enviar os dados:", error);
-        alert(error.message);
-      });
+  function fecharPopup() {
+    document.getElementById("overlay").style.display = "none";
+    document.getElementById("popup").style.display = "none";
   }
-</script>
 
-<script>
-  function clearModalFields() {
-    // Limpar campos comuns
-    document.getElementById("amount").value = "";
-    document.getElementById("card-valor").value = "";
-    document.getElementById("installments").value = "1"; // Define a parcela padrão
-    document.getElementById("boleto-valor").value = "";
-    document.getElementById("boleto-date").value = "";
-
-    // Desmarcar as opções de pagamento
-    const paymentRadios = document.querySelectorAll(
-      'input[name="paymentStatus"]'
-    );
-    paymentRadios.forEach((radio) => {
-      radio.checked = false;
-    });
-
-    // Resetar o método de pagamento selecionado
-    document.getElementById("payment-method").value = "";
-
-    // Esconder os campos dinâmicos
-    document.getElementById("input-amount").classList.add("d-none");
-    document.getElementById("credit-card-options").classList.add("d-none");
-    document.getElementById("boleto-options").classList.add("d-none");
-  }
-</script>
-<script>
+  // ---- Data inicial = hoje (São Paulo) ----
   document.addEventListener("DOMContentLoaded", function () {
-    configurarFormatacaoValor("amount");
-
-    configurarFormatacaoValor("card-valor");
-    configurarFormatacaoValor("boleto-valor");
-    configurarFormatacaoValor("manutencao");
-    configurarFormatacaoValor("combustivel");
-    configurarFormatacaoValor("pedagio");
-    configurarFormatacaoValor("reparo");
-    configurarFormatacaoValor("outros");
+    const nowInSaoPaulo = luxon.DateTime.now().setZone("America/Sao_Paulo");
+    document.getElementById("date").value = nowInSaoPaulo.toFormat("yyyy-MM-dd");
   });
 </script>
 {% endblock %}

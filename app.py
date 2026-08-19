@@ -38,10 +38,31 @@ def datetimeformat(value, format='%d/%m/%Y %H:%M:%S'):
 def datetimeformathour(value, format='%H:%M'):
     return datetime.strptime(value, '%Y-%m-%d %H:%M').strftime(format)
 
+DIAS_SEMANA_PT = [
+    'Segunda-feira',
+    'Terça-feira',
+    'Quarta-feira',
+    'Quinta-feira',
+    'Sexta-feira',
+    'Sábado',
+    'Domingo',
+]
+
+
+def dia_semana(value):
+    """Recebe 'YYYY-MM-DD' (ou 'YYYY-MM-DD HH:MM') e devolve o dia da semana em pt-br."""
+    try:
+        data = datetime.strptime(str(value)[:10], '%Y-%m-%d')
+    except (ValueError, TypeError):
+        return ''
+    return DIAS_SEMANA_PT[data.weekday()]
+
 # Registre o filtro no ambiente Jinja2
 app.jinja_env.filters['datetimeformat'] = datetimeformat
 
 app.jinja_env.filters['datetimeformathour'] = datetimeformathour
+
+app.jinja_env.filters['dia_semana'] = dia_semana
 
 def normalize_search_value(value):
     if value is None:
@@ -323,8 +344,12 @@ def attendance_records():
         }
 
         # Salvar o registro de atendimento sob a estrutura desejada
-        db.child("attendance_records").child(city).child(year).child(month).child(day).push(attendance_record)
-        return redirect(url_for('dashboard'))
+        resultado_att = db.child("attendance_records").child(city).child(year).child(month).child(day).push(attendance_record)
+        attendance_id = resultado_att.get("name") if isinstance(resultado_att, dict) else None
+
+        # Oferece gerar a OS na sequência (fluxo "já agendei no WhatsApp")
+        date_str = f"{year}-{month}-{day}"
+        return redirect(url_for('atendimento_registrado', city=city, date=date_str, attendance_id=attendance_id))
 
     # Carregar as cidades vinculadas ao usuÃ¡rio
     user_data = db.child("users").child(user_id).get().val()
@@ -334,6 +359,63 @@ def attendance_records():
     services = db.child("services").get().val() or {}
 
     return render_template('attendance_records.html', cities=cities, services=services)
+
+
+@app.route('/atendimento_registrado')
+@check_roles(['user', 'admin'])
+def atendimento_registrado():
+    """Tela intermediÃ¡ria: pergunta se o atendimento jÃ¡ vai gerar uma OS."""
+    city = request.args.get('city')
+    date = request.args.get('date')
+    attendance_id = request.args.get('attendance_id')
+
+    attendance = None
+    if city and date and attendance_id:
+        try:
+            d = datetime.strptime(date, '%Y-%m-%d')
+            year, month, day = str(d.year), f"{d.month:02d}", f"{d.day:02d}"
+            attendance = (
+                db.child("attendance_records").child(city).child(year)
+                .child(month).child(day).child(attendance_id).get().val()
+            )
+        except ValueError:
+            attendance = None
+
+    return render_template(
+        'atendimento_registrado.html',
+        city=city, date=date, attendance_id=attendance_id, attendance=attendance,
+    )
+
+
+@app.route('/os_novo/<city>/<date>/<attendance_id>', methods=['GET'])
+@check_roles(['user', 'admin'])
+def os_novo(city, date, attendance_id):
+    """PÃ¡gina dedicada para gerar a OS a partir de um atendimento."""
+    try:
+        d = datetime.strptime(date, '%Y-%m-%d')
+    except ValueError:
+        return "Formato de data inválido.", 400
+    year, month, day = str(d.year), f"{d.month:02d}", f"{d.day:02d}"
+
+    attendance = (
+        db.child("attendance_records").child(city).child(year)
+        .child(month).child(day).child(attendance_id).get().val()
+    )
+    if not attendance:
+        return "Atendimento não encontrado.", 404
+
+    all_users = db.child("users").get().val() or {}
+    tecnicos = {
+        uid: u for uid, u in all_users.items()
+        if isinstance(u, dict) and u.get('role') == 'tecnico'
+        and city in u.get('cities', [])
+    }
+
+    return render_template(
+        'os_novo.html',
+        attendance=attendance, city=city, date=date,
+        attendance_id=attendance_id, tecnicos=tecnicos,
+    )
 
 
 @app.route('/add_service', methods=['GET', 'POST'])
@@ -672,8 +754,12 @@ def gerar_os():
     
     Attendance.update_status(id=id_attendance, city=city, date=data_formatada, timestamp=timestamp)
 
-    db.child("ordens_servico").child(city).child(year).child(month).child(day).push(nova_os)
+    resultado_os = db.child("ordens_servico").child(city).child(year).child(month).child(day).push(nova_os)
+    os_id = resultado_os.get("name") if isinstance(resultado_os, dict) else None
 
+    # Redireciona para a pÃ¡gina da OS (onde o atendente copia as informaÃ§Ãµes)
+    if os_id:
+        return redirect(url_for('os_atendente', city=city, year=year, month=month, day=day, id=os_id))
     return redirect(url_for('dashboard'))
 
 @app.route('/consulta_agenda', methods=['GET', 'POST'])

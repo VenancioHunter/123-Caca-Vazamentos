@@ -1,0 +1,61 @@
+{% extends "layout.html" %} {% block title %}Atendimento Registrado{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 640px">
+  <div class="card border-0 shadow-sm mt-4">
+    <div class="card-body text-center p-4">
+      <div style="font-size: 2.6rem">✅</div>
+      <h4 class="fw-bold mt-2" style="color: #0d5590">
+        Atendimento registrado!
+      </h4>
+
+      {% if attendance %}
+      <div class="text-start mx-auto mt-3" style="max-width: 420px">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">Cliente</span>
+            <strong>{{ attendance.name or 'Não informado' }}</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">Serviço</span>
+            <strong>{{ attendance.service or 'Não informado' }}</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">Cidade</span>
+            <strong>{{ city }}</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">Telefone</span>
+            <strong>{{ attendance.phone or 'Não informado' }}</strong>
+          </li>
+        </ul>
+      </div>
+      {% endif %}
+
+      <p class="mt-4 mb-3 fs-5">Esse serviço já vai gerar uma OS agora?</p>
+
+      <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+        {% if city and date and attendance_id %}
+        <a
+          href="{{ url_for('os_novo', city=city, date=date, attendance_id=attendance_id) }}"
+          class="btn btn-primary btn-lg px-4"
+        >
+          Sim, gerar OS
+        </a>
+        {% endif %}
+        <a
+          href="{{ url_for('attendance_records') }}"
+          class="btn btn-outline-secondary btn-lg px-4"
+        >
+          Não, novo atendimento
+        </a>
+        <a
+          href="{{ url_for('dashboard') }}"
+          class="btn btn-link btn-lg px-4"
+        >
+          Ir para o início
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

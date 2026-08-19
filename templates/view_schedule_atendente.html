@@ -14,6 +14,12 @@ content %}
     <div class="my-3" align="end" style="font-weight: bold">
       <div>
         <span
+          >Data: {{ date.split('-')[2] }}/{{ date.split('-')[1] }} ({{ date |
+          dia_semana }})</span
+        >
+      </div>
+      <div>
+        <span
           >Início {{ os.start_datetime | datetimeformathour('%H:%M') }}
           horas</span
         >
@@ -27,7 +33,7 @@ content %}
     </div>
     <ul class="list-group list-group-flush">
       <li class="list-group-item">Nome: {{ os.name }}</li>
-      <li class="list-group-item">Telefone: {{ os.phone }}</li>
+      <li class="list-group-item" data-no-copy>Telefone: {{ os.phone }}</li>
       <li class="list-group-item">Serviço: {{ os.service }}</li>
     </ul>
     <div class="p-4 my-4" style="background-color: rgb(219, 219, 219)">
@@ -367,23 +373,45 @@ content %}
     // Selecionar o elemento do card com o ID correspondente
     var card = document.getElementById("os-card-" + os_id);
 
-    // Verificar se o card existe
-    if (card) {
-      // Capturar o texto do card
-      var cardText = card.innerText;
-
-      // Usar o clipboard API para copiar o texto para a área de transferência
-      navigator.clipboard
-        .writeText(cardText)
-        .then(function () {
-          alert("Informações copiadas com sucesso!");
-        })
-        .catch(function (error) {
-          console.error("Erro ao copiar as informações: ", error);
-        });
-    } else {
+    if (!card) {
       alert("Card não encontrado!");
+      return;
     }
+
+    // Clona o card e remove tudo que estiver marcado com data-no-copy
+    // (telefone e botões de edição). O clone é renderizado fora da tela
+    // para que o innerText mantenha as quebras de linha.
+    var clone = card.cloneNode(true);
+    clone.querySelectorAll("[data-no-copy]").forEach(function (el) {
+      el.remove();
+    });
+
+    clone.style.position = "fixed";
+    clone.style.left = "-99999px";
+    clone.style.top = "0";
+    document.body.appendChild(clone);
+
+    var cardText = clone.innerText
+      .split("\n")
+      .map(function (linha) {
+        return linha.trim();
+      })
+      .filter(function (linha) {
+        return linha !== "";
+      })
+      .join("\n");
+
+    document.body.removeChild(clone);
+
+    // Usar o clipboard API para copiar o texto para a área de transferência
+    navigator.clipboard
+      .writeText(cardText)
+      .then(function () {
+        alert("Informações copiadas com sucesso!");
+      })
+      .catch(function (error) {
+        console.error("Erro ao copiar as informações: ", error);
+      });
   }
 </script>
 
