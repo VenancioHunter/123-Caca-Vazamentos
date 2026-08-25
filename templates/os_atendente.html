@@ -119,7 +119,11 @@ block content %}
       </div>
     </div>
 
-    <div class="os-card-body" id="os-card-{{ os_id }}">
+    <div
+      class="os-card-body"
+      id="os-card-{{ os_id }}"
+      data-cidade="{{ os.city|default('', true) }}"
+    >
       <div class="os-time-box">
         <div>
           Data: {{ date.split('-')[2] }}/{{ date.split('-')[1] }} ({{ date |
@@ -706,8 +710,12 @@ block content %}
 
     document.body.removeChild(clone);
 
+    // Cidade no topo, seguida de uma linha em branco
+    var cidade = (card.getAttribute("data-cidade") || "").trim();
+    var textoFinal = (cidade ? cidade + "\n\n" : "") + cardText;
+
     navigator.clipboard
-      .writeText(cardText)
+      .writeText(textoFinal)
       .then(function () {
         alert("Informações copiadas com sucesso!");
       })

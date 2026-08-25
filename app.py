@@ -1988,74 +1988,113 @@ def attendance_desempenho():
         {"value": "12", "name": "Dezembro"},
     ]
 
-    selected_month = None
-    year = datetime.now(pytz.timezone('America/Sao_Paulo')).year  # Ano atual
-    daily_summary = {}
-    total_agendados = 0
-    total_aguardando = 0
-    total_atendimentos = 0
+    sp_now = datetime.now(pytz.timezone('America/Sao_Paulo'))
+    ano_atual = str(sp_now.year)
+    mes_atual = f"{sp_now.month:02d}"
 
+    # MÃªs a exibir: o escolhido no formulÃ¡rio ou, por padrÃ£o, o mÃªs atual
+    selected_month = None
     if request.method == 'POST':
         selected_month = request.form.get('selected_month')
+    if not selected_month:
+        selected_month = mes_atual
 
-    if selected_month:
-        # ObtÃ©m os dados de atendimentos do Firebase
-        attendance_data = db.child("attendance_records").get().val() or {}
+    mes_nome = next((m['name'] for m in meses if m['value'] == selected_month), selected_month)
 
-        # Filtra os registros para o atendente logado e o mÃªs selecionado
-        for city, years in attendance_data.items():
-            if str(year) in years:
-                months = years[str(year)]
-                if selected_month in months:
-                    days = months[selected_month]
-                    for day, attendances in days.items():
-                        if day not in daily_summary:
-                            daily_summary[day] = {"agendados": 0, "aguardando": 0, "total": 0}
+    def eh_reparo(registro):
+        return (registro.get('service') or '').strip().lower() == 'reparo'
 
-                        for attendance_id, attendance_info in attendances.items():
-                            user_id = attendance_info.get('user_id')
-                            if user_id == id_atendente:  # Apenas registros do atendente logado
-                                status = attendance_info.get('status')
-                                if status == "Agendado":
-                                    daily_summary[day]["agendados"] += 1
-                                elif status == "Aguardando":
-                                    daily_summary[day]["aguardando"] += 1
-                                daily_summary[day]["total"] += 1
+    # Atendimentos do atendente no mÃªs selecionado (attendance_records) â€” reparo Ã  parte
+    attendance_all = db.child("attendance_records").get().val() or {}
+    total_atendimentos_mes = 0
+    atend_reparo = 0
+    for _city, years in attendance_all.items():
+        if not isinstance(years, dict):
+            continue
+        dias = ((years.get(ano_atual) or {}).get(selected_month) or {})
+        for _day, registros in dias.items():
+            if not isinstance(registros, dict):
+                continue
+            for _aid, info in registros.items():
+                if not isinstance(info, dict) or info.get('user_id') != id_atendente:
+                    continue
+                if eh_reparo(info):
+                    atend_reparo += 1
+                else:
+                    total_atendimentos_mes += 1
 
-    # Atualiza os totais mensais fora do loop diÃ¡rio
-    for day_summary in daily_summary.values():
-        total_agendados += day_summary["agendados"]
-        total_aguardando += day_summary["aguardando"]
-        total_atendimentos += day_summary["total"]
+    # Agendamentos (ordens_servico) do atendente no mÃªs selecionado â€” reparo Ã  parte
+    os_all = db.child("ordens_servico").get().val() or {}
+    os_recebido = os_pendente = os_sem_status = 0
+    rep_recebido = rep_pendente = rep_sem_status = 0
+    os_pendente_lista = []
+    os_sem_status_lista = []
+    rep_pendente_lista = []
+    rep_sem_status_lista = []
+    for _city, years in os_all.items():
+        if not isinstance(years, dict):
+            continue
+        dias = ((years.get(ano_atual) or {}).get(selected_month) or {})
+        for _day, registros in dias.items():
+            if not isinstance(registros, dict):
+                continue
+            for _oid, os_info in registros.items():
+                if not isinstance(os_info, dict) or os_info.get('user_id') != id_atendente:
+                    continue
+                status_os = (os_info.get('status_paymment') or '').strip().lower()
+                item_os = {
+                    'city': _city,
+                    'year': ano_atual,
+                    'month': selected_month,
+                    'day': _day,
+                    'id': _oid,
+                    'name': os_info.get('name'),
+                    'numero_os': os_info.get('numero_os'),
+                    'service': os_info.get('service'),
+                }
+                if eh_reparo(os_info):
+                    if status_os == 'recebido':
+                        rep_recebido += 1
+                    elif status_os == 'pendente':
+                        rep_pendente += 1
+                        rep_pendente_lista.append(item_os)
+                    else:
+                        rep_sem_status += 1
+                        rep_sem_status_lista.append(item_os)
+                else:
+                    if status_os == 'recebido':
+                        os_recebido += 1
+                    elif status_os == 'pendente':
+                        os_pendente += 1
+                        os_pendente_lista.append(item_os)
+                    else:
+                        os_sem_status += 1
+                        os_sem_status_lista.append(item_os)
+    total_agendamentos_mes = os_recebido + os_pendente + os_sem_status
+    total_reparos = rep_recebido + rep_pendente + rep_sem_status
 
-    # Calcula as porcentagens
-    percent_agendados = (
-        round((total_agendados / total_atendimentos) * 100 if total_atendimentos else 0, 2)
-    )
-    percent_aguardando = (
-        round((total_aguardando / total_atendimentos) * 100 if total_atendimentos else 0, 2)
-    )
-
-    # Converte o resumo diÃ¡rio para uma lista ordenada por dia
-    ordered_daily_summary = [
-        {"day": f"{day}/{selected_month}/{year}", **summary}
-        for day, summary in sorted(daily_summary.items())
-    ]
-
-    # ObtÃ©m o nome do atendente logado
     user_name = User.get_name(id_atendente)
 
     return render_template(
         'attendance_desempenho.html',
         meses=meses,
         selected_month=selected_month,
-        daily_summary=ordered_daily_summary,
-        total_agendados=total_agendados,
-        total_aguardando=total_aguardando,
-        total_atendimentos=total_atendimentos,
-        percent_agendados=percent_agendados,
-        percent_aguardando=percent_aguardando,
-        user_name=user_name
+        mes_nome=mes_nome,
+        user_name=user_name,
+        total_atendimentos_mes=total_atendimentos_mes,
+        total_agendamentos_mes=total_agendamentos_mes,
+        os_recebido=os_recebido,
+        os_pendente=os_pendente,
+        os_sem_status=os_sem_status,
+        atend_reparo=atend_reparo,
+        total_reparos=total_reparos,
+        rep_recebido=rep_recebido,
+        rep_pendente=rep_pendente,
+        rep_sem_status=rep_sem_status,
+        os_pendente_lista=os_pendente_lista,
+        os_sem_status_lista=os_sem_status_lista,
+        rep_pendente_lista=rep_pendente_lista,
+        rep_sem_status_lista=rep_sem_status_lista,
     )
 
 
@@ -3339,6 +3378,50 @@ def atualizar_valor_os():
         "success": True,
         "newprice": new_price
     })
+
+
+@app.route("/atualizar_nome_os", methods=["POST"])
+def atualizar_nome_os():
+    data = request.get_json() or {}
+    date = data.get("date")
+    os_id = data.get("os_id")
+    city = data.get("city")
+    name = (data.get("name") or "").strip()
+
+    if not os_id or not city or not date:
+        return jsonify({"success": False, "message": "Dados incompletos."}), 400
+
+    try:
+        d = datetime.strptime(date, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "message": "Data inválida."}), 400
+    year, month, day = str(d.year), f"{d.month:02d}", f"{d.day:02d}"
+
+    db.child("ordens_servico").child(city).child(year).child(month).child(day).child(os_id).update({"name": name})
+
+    return jsonify({"success": True, "name": name})
+
+
+@app.route("/atualizar_cpfcnpj_os", methods=["POST"])
+def atualizar_cpfcnpj_os():
+    data = request.get_json() or {}
+    date = data.get("date")
+    os_id = data.get("os_id")
+    city = data.get("city")
+    cpfcnpj = (data.get("cpfcnpj") or "").strip()
+
+    if not os_id or not city or not date:
+        return jsonify({"success": False, "message": "Dados incompletos."}), 400
+
+    try:
+        d = datetime.strptime(date, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "message": "Data inválida."}), 400
+    year, month, day = str(d.year), f"{d.month:02d}", f"{d.day:02d}"
+
+    db.child("ordens_servico").child(city).child(year).child(month).child(day).child(os_id).update({"cpfcnpj": cpfcnpj})
+
+    return jsonify({"success": True, "cpfcnpj": cpfcnpj})
 
 
 @app.route('/adm_desempenho_atendentes', methods=['GET', 'POST'])
