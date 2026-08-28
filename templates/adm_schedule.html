@@ -90,6 +90,23 @@ content %}
     return partes[1] || "--:--";
   }
 
+  // Badge de status da OS (mesmo critério de antes)
+  function badgeStatus(os) {
+    const st = (os.status_paymment || "").toString().toLowerCase();
+    let cls, txt;
+    if (st === "recebido") {
+      cls = "bg-success";
+      txt = "Recebido";
+    } else if (st === "pendente") {
+      cls = "bg-primary";
+      txt = "Pendente";
+    } else {
+      cls = "bg-warning text-dark";
+      txt = "Aguardando";
+    }
+    return `<span class="badge ${cls}" style="text-transform: capitalize">${txt}</span>`;
+  }
+
   // ---- Montagem dos cards (mesmas informações de view_schedule_atendente) ----
   function cardOS(os) {
     const ender = os.address || {};
@@ -102,7 +119,10 @@ content %}
     return `
       <div class="card mb-3">
         <div class="card-body">
-          <h5 class="card-title">${escapeHtml(os.city || "")}</h5>
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <h5 class="card-title mb-0">${escapeHtml(os.city || "")}</h5>
+            ${badgeStatus(os)}
+          </div>
           <div class="my-2" style="font-weight: bold; text-align: right">
             <div>Data: ${formatarData(os.data)}</div>
             <div>Início ${formatarHora(os.start_datetime)} horas</div>
