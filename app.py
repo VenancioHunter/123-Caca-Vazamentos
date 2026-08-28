@@ -25,6 +25,12 @@ app = Flask(__name__)
 CORS(app)
 app.secret_key = 'secret'
 
+# Enquanto o billing do Firebase Storage estiver desativado, opere SEM Storage:
+# os PDFs nÃ£o sÃ£o armazenados; guardamos apenas o hash + a assinatura no banco,
+# e o tÃ©cnico baixa o PDF assinado localmente.
+# Volte para True quando o faturamento do Storage estiver ativo.
+USE_STORAGE = False
+
 
 def datetimeformat(value, format='%d/%m/%Y %H:%M:%S'):
     sao_paulo_tz = pytz.timezone('America/Sao_Paulo')
@@ -2804,11 +2810,22 @@ def upload_pdf():
 
     file.stream.seek(0)
 
-    storage.child(relatorio_data["filename"]).put(pdf_file)
-    relatorio_data["pdf_url"] = storage.child(relatorio_data["filename"]).get_url(None)
+    try:
+        if USE_STORAGE:
+            storage.child(relatorio_data["filename"]).put(pdf_file)
+            relatorio_data["pdf_url"] = storage.child(relatorio_data["filename"]).get_url(None)
+        else:
+            # Sem Storage: nÃ£o armazena o arquivo, mas usa "" em vez de None.
+            # O Firebase descarta valores null; como pdf_url/filename entram no
+            # payload assinado, um null quebraria a verificaÃ§Ã£o da assinatura.
+            relatorio_data["pdf_url"] = ""
+            # filename permanece como o nome gerado (rÃ³tulo; nada Ã© enviado ao Storage)
 
-    # Salvar no Realtime Database
-    relatorio_id = db.child("relatorios").push(relatorio_data)
+        # Salvar no Realtime Database
+        relatorio_id = db.child("relatorios").push(relatorio_data)
+    except Exception as e:
+        # Retorna JSON (e nÃ£o um HTML 500) para o componente exibir o erro real
+        return jsonify({"status": "error", "message": f"Falha ao salvar o PDF: {e}"}), 500
 
     return jsonify(
         {
@@ -2861,14 +2878,21 @@ def upload_signed_pdf():
     if report.get("tecnico_user_id") != session.get("user"):
         return jsonify({"status": "error", "message": "Relatório não pertence a você"}), 403
 
-    filename = f"relatorios/assinados/{report_id}.pdf"
-    storage.child(filename).put(file)
-    signed_url = storage.child(filename).get_url(None)
+    if not USE_STORAGE:
+        # Sem Storage: o tÃ©cnico jÃ¡ baixa o PDF carimbado localmente; sÃ³ marcamos como assinado
+        db.child("relatorios").child(report_id).update({"signature_status": "signed"})
+        return jsonify({"status": "ok", "signed_pdf_url": None})
 
-    db.child("relatorios").child(report_id).update({
-        "signed_pdf_url": signed_url,
-        "signed_pdf_filename": filename,
-    })
+    filename = f"relatorios/assinados/{report_id}.pdf"
+    try:
+        storage.child(filename).put(file)
+        signed_url = storage.child(filename).get_url(None)
+        db.child("relatorios").child(report_id).update({
+            "signed_pdf_url": signed_url,
+            "signed_pdf_filename": filename,
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Falha ao salvar o PDF assinado: {e}"}), 500
 
     return jsonify({"status": "ok", "signed_pdf_url": signed_url})
 
